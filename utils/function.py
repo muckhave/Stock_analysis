@@ -2,13 +2,15 @@ import pandas as pd
 import os
 
 def get_stock_data(ticker):
-    # ファイルパスを作成
-    file_path = os.path.join('data', f'{ticker}.T.csv')
+    file_path = os.path.join("data", f"{ticker}.T.csv")
     
-    # CSVファイルが存在するか確認
-    if os.path.exists(file_path):
-        # CSVを読み込んでデータフレームに変換
-        df = pd.read_csv(file_path)
-        return df
-    else:
-        raise FileNotFoundError(f"{file_path} が見つかりません。")
+    # CSVを適切に読み込む
+    df = pd.read_csv(file_path, skiprows=2, index_col=0, parse_dates=True)
+    
+    # 列名の順番を指定して設定
+    df.columns = ["Close", "High", "Low", "Open", "Volume"]
+    
+    # インデックス（Date）を日付に変換
+    df.index = pd.to_datetime(df.index)
+    
+    return df
