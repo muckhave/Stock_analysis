@@ -122,7 +122,7 @@ def log_error(message):
 def fetch_and_save_stock_data(ticker):
     try:
         # 直近1年の日足データ取得
-        df = yf.download(ticker, period="2y")
+        df = yf.download(ticker, period="1y")
         if df.empty:
             log_error(f"{ticker} のデータが取得できませんでした。")
             return
