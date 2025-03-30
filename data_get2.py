@@ -47,7 +47,7 @@ def fetch_stock_data(symbol):
         timestamps = chart.get("timestamp")
         ohlc = chart.get("indicators", {}).get("quote", [{}])[0]
 
-        if timestamps is None or not all(k in ohlc for k in ["open", "high", "low", "close", "volume"]):
+        if timestamps is None or not all(k in ohlc for k in ["close","high","low","open","volume"]):
             raise ValueError(f"❌ データ不完全: {symbol}")
 
         # データフレームを作成

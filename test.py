@@ -8,50 +8,52 @@ import matplotlib.lines as mlines
 import numpy as np
 import requests
 import yfinance as yf
-from utils.function import get_stock_data
-from yahoo_finance_api2 import share
-from yahoo_finance_api2.exceptions import YahooFinanceError
-import pandas as pd
+from utils.function import *
+from backtesting import Strategy
+from backtesting import Backtest
+from backtesting.lib import crossover
+from backtesting.test import SMA
 
+############### 以下メモ用 ################
+# get_stock_data(ticker)で株価データフレームを返す
+# get_stock_minute_data(ticker)で分足の株価データフレームを返す
+##########################################
 
-import requests
-import json
+class SmaCross(Strategy):
+    ns = 5 
+    nl = 25
 
-import requests
-import pandas as pd
+    def init(self):
+        self.smaS = self.I(SMA, self.data["Close"], self.ns)
+        self.smaL = self.I(SMA, self.data["Close"], self.nl)
 
-# 取得したい銘柄コード
-symbol = "7012.T"
-interval = "5m"  # 5分足
-range_period = "60d"  # 60日分
+    def next(self):
+        if crossover(self.smaS, self.smaL):
+            self.buy()
+        elif crossover(self.smaL, self.smaS):
+            self.position.close()
 
-# Yahoo!ファイナンスのAPIエンドポイント
-url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?interval={interval}&range={range_period}"
+if __name__ == '__main__':
+    ticker = "7203.T"
+    df = get_stock_data(ticker)
+    
+    print(df)
 
-# User-Agentを設定
-headers = {"User-Agent": "Mozilla/5.0"}
+    bt = Backtest(df, SmaCross, trade_on_close=True)
 
-# APIリクエストを送信
-response = requests.get(url, headers=headers)
-data = response.json()
+    result = bt.optimize(
+        ns=range(5, 25, 5),
+        nl=range(5, 75, 5),
+        maximize='Return [%]',
+        constraint=lambda r: r.ns < r.nl
+    )
 
-# 必要なデータを取得
-chart = data["chart"]["result"][0]
-timestamps = chart["timestamp"]
-ohlc = chart["indicators"]["quote"][0]
+    print("最適化結果:")
+    print(result)
 
-# DataFrameに変換
-df = pd.DataFrame({
-    "timestamp": pd.to_datetime(timestamps, unit="s"),  # UNIX時間を日時に変換
-    "open": ohlc["open"],
-    "high": ohlc["high"],
-    "low": ohlc["low"],
-    "close": ohlc["close"],
-    "volume": ohlc["volume"]
-})
+    # 最適なパラメータ（ns, nl）を出力
+    best_ns = result._strategy.ns
+    best_nl = result._strategy.nl
+    print(f"最適なns: {best_ns}, 最適なnl: {best_nl}")
 
-# 結果を確認
-print(df.head())
-
-# CSVに保存
-df.to_csv("stock_data_1379.csv", index=False)
+    bt.plot()
