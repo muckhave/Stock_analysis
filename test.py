@@ -21,7 +21,7 @@ import requests
 import pandas as pd
 
 # 取得したい銘柄コード
-symbol = "1379.T"
+symbol = "7012.T"
 interval = "5m"  # 5分足
 range_period = "60d"  # 60日分
 
