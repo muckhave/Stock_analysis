@@ -8,30 +8,21 @@ import matplotlib.lines as mlines
 import numpy as np
 import requests
 import yfinance as yf
-from utils.function import *
+
 from backtesting import Strategy
 from backtesting import Backtest
 from backtesting.lib import crossover
 from backtesting.test import SMA
+
+from utils.function import *
+from backtests.backtests import *
+
 
 ############### 以下メモ用 ################
 # get_stock_data(ticker)で株価データフレームを返す
 # get_stock_minute_data(ticker)で分足の株価データフレームを返す
 ##########################################
 
-class SmaCross(Strategy):
-    ns = 5 
-    nl = 25
-
-    def init(self):
-        self.smaS = self.I(SMA, self.data["Close"], self.ns)
-        self.smaL = self.I(SMA, self.data["Close"], self.nl)
-
-    def next(self):
-        if crossover(self.smaS, self.smaL):
-            self.buy()
-        elif crossover(self.smaL, self.smaS):
-            self.position.close()
 
 if __name__ == '__main__':
     ticker = "7203.T"
@@ -39,21 +30,27 @@ if __name__ == '__main__':
     
     print(df)
 
-    bt = Backtest(df, SmaCross, trade_on_close=True)
+    bt = Backtest(df, MACDCross, trade_on_close=True)
+    # SmaCross,RSICross,MACDCross
 
     result = bt.optimize(
-        ns=range(5, 25, 5),
-        nl=range(5, 75, 5),
+        n1=range(5, 75, 5),
+        n2=range(10, 75, 5),
+        n3=range(10, 75, 5),
         maximize='Return [%]',
-        constraint=lambda r: r.ns < r.nl
+        constraint=lambda r: r.n1 < r.n2
     )
+
+    # result = bt.run()
 
     print("最適化結果:")
     print(result)
 
     # 最適なパラメータ（ns, nl）を出力
-    best_ns = result._strategy.ns
-    best_nl = result._strategy.nl
-    print(f"最適なns: {best_ns}, 最適なnl: {best_nl}")
+    best_n1 = result._strategy.n1
+    best_n2 = result._strategy.n2
+    best_n3 = result._strategy.n3
+    # print(f"最適なns: {best_ns}, 最適なnl: {best_nl}")
 
     bt.plot()
+

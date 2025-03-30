@@ -35,3 +35,35 @@ def get_stock_minute_data(ticker):
 
 
 
+from backtesting import Backtest
+
+def run_optimized_backtest(df, strategy_class, maximize_metric='Return [%]', constraint=None, max_attempts=3):
+    """
+    売買ルールのクラス内のパラメータを使ってバックテストを最適化
+    """
+    bt = Backtest(df, strategy_class, trade_on_close=True)
+    # クラスから最適化パラメータを取得
+    optimize_params = strategy_class.get_optimize_params()
+
+    attempt = 0
+    optimized_result = None
+    while attempt < max_attempts:
+        try:
+            optimized_result = bt.optimize(
+                **optimize_params,
+                maximize=maximize_metric,
+                constraint=constraint
+            )
+            break  # 成功したらループを抜ける
+        except Exception as e:
+            print(f"最適化エラー (試行 {attempt+1}/{max_attempts}): {e}")
+            attempt += 1
+    
+    if optimized_result is None:
+        raise RuntimeError("最適化に失敗しました")
+    
+    best_params = {key: getattr(optimized_result._strategy, key) for key in optimize_params.keys()}
+    final_result = bt.run(**best_params)
+    
+    return bt, final_result, best_params
+
