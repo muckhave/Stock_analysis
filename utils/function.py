@@ -1,5 +1,6 @@
 import pandas as pd
 import os
+import talib as ta
 
 def get_stock_data(ticker):
     file_path = os.path.join("data/daily", f"{ticker}.csv")
@@ -30,3 +31,7 @@ def get_stock_minute_data(ticker):
     df.index = pd.to_datetime(df.index)
     
     return df
+
+
+
+

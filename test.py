@@ -8,30 +8,21 @@ import matplotlib.lines as mlines
 import numpy as np
 import requests
 import yfinance as yf
-from utils.function import *
+
 from backtesting import Strategy
 from backtesting import Backtest
 from backtesting.lib import crossover
 from backtesting.test import SMA
+
+from utils.function import *
+from backtests.backtests import *
+
 
 ############### 以下メモ用 ################
 # get_stock_data(ticker)で株価データフレームを返す
 # get_stock_minute_data(ticker)で分足の株価データフレームを返す
 ##########################################
 
-class SmaCross(Strategy):
-    ns = 5 
-    nl = 25
-
-    def init(self):
-        self.smaS = self.I(SMA, self.data["Close"], self.ns)
-        self.smaL = self.I(SMA, self.data["Close"], self.nl)
-
-    def next(self):
-        if crossover(self.smaS, self.smaL):
-            self.buy()
-        elif crossover(self.smaL, self.smaS):
-            self.position.close()
 
 if __name__ == '__main__':
     ticker = "7203.T"
@@ -39,7 +30,8 @@ if __name__ == '__main__':
     
     print(df)
 
-    bt = Backtest(df, SmaCross, trade_on_close=True)
+    bt = Backtest(df, RSICross, trade_on_close=True)
+    # SmaCross,RSICross
 
     result = bt.optimize(
         ns=range(5, 25, 5),
@@ -47,6 +39,8 @@ if __name__ == '__main__':
         maximize='Return [%]',
         constraint=lambda r: r.ns < r.nl
     )
+
+    # result = bt.run()
 
     print("最適化結果:")
     print(result)
