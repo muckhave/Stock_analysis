@@ -25,7 +25,7 @@ tickers = [
 ]
 
 # 保存フォルダを data に変更
-data_folder = "data"
+data_folder = "data/daily/"
 os.makedirs(data_folder, exist_ok=True)
 error_log_file = os.path.join(data_folder, "error_log.txt")
 
