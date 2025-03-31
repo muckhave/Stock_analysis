@@ -8,7 +8,7 @@ import os
 from datetime import datetime
 
 # 取得する期間を設定（例: "1y" -> 1年, "6mo" -> 6ヶ月, "5d" -> 5日）
-PERIOD = "3y"
+PERIOD = "5y"
 
 # 取得したい100銘柄 + 日経平均
 tickers = [
