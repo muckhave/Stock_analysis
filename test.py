@@ -27,7 +27,7 @@ if __name__ == '__main__':
     ticker = "7203.T"
     df = get_stock_data(ticker)
 
-    rdf , backtest_result,best_params = run_optimized_backtest(df,MACDCross)
+    rdf , backtest_result,best_params = run_optimized_backtest(df,SmaCross)
 
     print(backtest_result)
     print(best_params)
