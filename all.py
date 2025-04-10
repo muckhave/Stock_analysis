@@ -333,13 +333,13 @@ if __name__ == '__main__':
     result = bt.run()
     print(result)
 
-    # # 最適化の実行
-    # optimized_result = bt.optimize(
-    #     short_window=range(5, 20, 5),
-    #     long_window=range(10, 50, 10),
-    #     maximize="Sharpe Ratio",
-    #     constraint=lambda p: p.short_window < p.long_window  # 短期線 < 長期線
-    # )
+    # 最適化の実行
+    optimized_result = bt.optimize(
+        short_window=range(5, 20, 5),
+        long_window=range(10, 50, 10),
+        maximize="Return [%]",
+        constraint=lambda p: p.short_window < p.long_window  # 短期線 < 長期線
+    )
 
     # print("最適化結果:")
     # print(optimized_result)
