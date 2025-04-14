@@ -24,8 +24,12 @@ if __name__ == '__main__':
     # get_stock_minute_data(ticker)で分足の株価データフレームを返す
     ##########################################
 
-    ticker = "7203.T"
+    ticker = "285A.T_daily"
+    ticker2 = "6146.T"
+    
     df = get_stock_data(ticker)
+    df2 = get_stock_data(ticker2)
+
 
     rdf , backtest_result,best_params = run_optimized_backtest(df,SmaCross)
 
