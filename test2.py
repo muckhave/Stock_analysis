@@ -91,7 +91,19 @@ def get_stock_minute_data(ticker):
     return df
 
 
-
+def get_stock_data_old(ticker):
+    file_path = os.path.join("data/daily", f"{ticker}.csv")
+    
+    # CSVを適切に読み込む
+    df = pd.read_csv(file_path, skiprows=2, index_col=0, parse_dates=True)
+    
+    # 列名の順番を指定して設定
+    df.columns = ["Close", "High", "Low", "Open", "Volume"]
+    
+    # インデックス（Date）を日付に変換
+    df.index = pd.to_datetime(df.index)
+    
+    return df
 
 from backtesting import Backtest
 
@@ -335,7 +347,7 @@ if __name__ == '__main__':
     ticker2 = "6146.T"
     df = get_stock_data(ticker)
     df.index.name = None  # ← インデックス名を削除
-    df2 = get_stock_data_test(ticker2)
+    df2 = get_stock_data_old(ticker2)
 
     print(df)
     print(df2)
@@ -343,23 +355,8 @@ if __name__ == '__main__':
 
 
 
-
-
-    class SmaCross(Strategy):
-        short_window = 10  # ← クラス変数として定義
-        long_window = 20   # ← クラス変数として定義
-
-        def init(self):
-            self.short_ma = self.I(pd.Series.rolling, self.data.Close, self.short_window).mean()
-            self.long_ma = self.I(pd.Series.rolling, self.data.Close, self.long_window).mean()
-
-        def next(self):
-            if crossover(self.short_ma, self.long_ma):
-                self.buy()
-            elif crossover(self.long_ma, self.short_ma):
-                self.sell()
     # バックテストの実行
-    bt = Backtest(df, SmaCross)
+    bt = Backtest(df2, SmaCross)
     result = bt.run()
     print(result)
 
