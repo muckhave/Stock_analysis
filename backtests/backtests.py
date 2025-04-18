@@ -6,7 +6,10 @@ from backtesting.lib import crossover
 from backtesting.test import SMA
 import talib as ta
 
+
 class SmaCross(Strategy):
+    # ns = 0.5
+    # nl = 5
     ns = 5 
     nl = 25
 
@@ -15,6 +18,8 @@ class SmaCross(Strategy):
         return {
             "ns": range(5, 25, 5),
             "nl": range(5, 75, 5),
+            # "ns": range(0.5, 2.5, 0.5),
+            # "nl": range(0.5, 5, 0.5),
         }
 
     def init(self):
@@ -182,3 +187,4 @@ class AtrTrailingStopStrategy(Strategy):
             self.buy(sl=self.data.Close[-1] - self.atr_multiplier * self.atr[-1])
         elif self.data.Close[-1] < self.ma[-1]:
             self.position.close()
+

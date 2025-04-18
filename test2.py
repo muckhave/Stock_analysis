@@ -151,6 +151,8 @@ from backtesting.test import SMA
 import talib as ta
 
 class SmaCross(Strategy):
+    # ns = 0.5
+    # nl = 5
     ns = 5 
     nl = 25
 
@@ -159,6 +161,8 @@ class SmaCross(Strategy):
         return {
             "ns": range(5, 25, 5),
             "nl": range(5, 75, 5),
+            # "ns": range(0.5, 2.5, 0.5),
+            # "nl": range(0.5, 5, 0.5),
         }
 
     def init(self):
@@ -345,33 +349,41 @@ if __name__ == '__main__':
 
     ticker = "5803.T_daily"
     ticker2 = "6146.T"
-    ticker3 = "5803.T_daily"
+    ticker3 = "285A.T"
     df = get_stock_data(ticker)
     df.index.name = None  # ← インデックス名を削除
     df2 = get_stock_data_old(ticker2)
-    df3 = get_stock_data_old(ticker3)
+    df3 = get_stock_minute_data(ticker3)
 
-    print(df)
-    print(df2)
-
-
+    # print(df)
+    # print(df2)
 
 
-    # バックテストの実行
-    bt = Backtest(df3, SmaCross)
-    result = bt.run()
-    print(result)
+    bt, result, best_params  = run_optimized_backtest(df,SmaCross)
 
-    # 最適化の実行
-    optimized_result = bt.optimize(
-        ns=range(5, 20, 5),
-        nl=range(10, 50, 10),
-        maximize="Return [%]",
-        constraint=lambda p: p.ns < p.nl  # ns < nl に変更
-    )
+    # # バックテストの実行
+    # bt = Backtest(df2, SmaCross)
+    # result = bt.run()
+    # print(result)
+
+    # # 最適化の実行
+    # optimized_result = bt.optimize(
+    #     ns=range(5, 20, 5),
+    #     nl=range(10, 50, 10),
+    #     maximize="Return [%]",
+    #     constraint=lambda p: p.ns < p.nl  # ns < nl に変更
+    # )
 
     # print("最適化結果:")
     # print(optimized_result)
 
+
+    print(result)
+    print(best_params)
+    
+
     # 最適化結果でバックテスト
     bt.plot()
+
+
+    

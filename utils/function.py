@@ -3,19 +3,40 @@ import os
 import talib as ta
 
 def get_stock_data(ticker):
-    file_path = os.path.join("data/daily", f"{ticker}_daily.csv")
-    
+    file_path = os.path.join("data/daily", f"{ticker}.csv")
+    # file_path = os.path.join("data/daily", f"{ticker}_daily.csv")
+
     # CSVを適切に読み込む
     df = pd.read_csv(file_path, index_col=0, parse_dates=True)
 
-        # 列名の順番を指定して設定
+    # 列名の順番を指定して設定
     df.columns = ["Close", "High", "Low", "Open", "Volume"]
-    
-    # インデックス（Date）を日付に変換
-    df.index = pd.to_datetime(df.index)
-    
+
+    # インデックスを datetime に変換（タイムゾーン削除）
+    df.index = pd.to_datetime(df.index).tz_localize(None)  # ここを追加
+
     return df
 
+
+
+def get_stock_data_test(ticker):
+    file_path = os.path.join("data/daily", f"{ticker}.csv")
+
+    # ヘッダーを2行使って読み込む
+    df = pd.read_csv(file_path, header=[0, 1], index_col=0)
+
+    # 不要な1行目（"Price"）を削除、2行目（"6146.T"）を列名にする
+    df.columns = df.columns.droplevel(0)  # "Price" を削除
+
+    # インデックス（日付）を datetime に変換
+    # df.index = pd.to_datetime(df.index, format="%Y/%m/%d", errors='coerce')
+    df.index = pd.to_datetime(df.index, errors='coerce')
+    df = df.dropna()  # 日付変換に失敗した行は削除
+
+    df.columns = ["Close", "High", "Low", "Open", "Volume"]
+    df.index = df.index.tz_localize(None)  # タイムゾーンなし
+
+    return df
 
 
 def get_stock_minute_data(ticker):
@@ -27,13 +48,25 @@ def get_stock_minute_data(ticker):
         # 列名の順番を指定して設定
     df.columns = ["Close", "High", "Low", "Open", "Volume"]
     
-    # インデックス（Date）を日付に変換
-    df.index = pd.to_datetime(df.index)
+    # インデックスを datetime に変換（タイムゾーン削除）
+    df.index = pd.to_datetime(df.index).tz_localize(None)  # ここを追加
     
     return df
 
 
-
+def get_stock_data_old(ticker):
+    file_path = os.path.join("data/daily", f"{ticker}.csv")
+    
+    # CSVを適切に読み込む
+    df = pd.read_csv(file_path, skiprows=2, index_col=0, parse_dates=True)
+    
+    # 列名の順番を指定して設定
+    df.columns = ["Close", "High", "Low", "Open", "Volume"]
+    
+    # インデックス（Date）を日付に変換
+    df.index = pd.to_datetime(df.index)
+    
+    return df
 
 from backtesting import Backtest
 
@@ -66,4 +99,3 @@ def run_optimized_backtest(df, strategy_class, maximize_metric='Return [%]', con
     final_result = bt.run(**best_params)
     
     return bt, final_result, best_params
-

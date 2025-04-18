@@ -18,39 +18,52 @@ from utils.function import *
 from backtests.backtests import *
 
 
-############### 以下メモ用 ################
-# get_stock_data(ticker)で株価データフレームを返す
-# get_stock_minute_data(ticker)で分足の株価データフレームを返す
-##########################################
-
 
 if __name__ == '__main__':
-    ticker = "7203.T"
+
+    ############### 以下メモ用 ################
+    # get_stock_data(ticker)で株価データフレームを返す
+    # get_stock_minute_data(ticker)で分足の株価データフレームを返す
+    ##########################################
+
+
+    ticker = "5803.T_daily"
+    ticker2 = "6146.T"
+    ticker3 = "285A.T"
     df = get_stock_data(ticker)
-    
-    print(df)
+    df.index.name = None  # ← インデックス名を削除
+    df2 = get_stock_data_old(ticker2)
+    df3 = get_stock_minute_data(ticker3)
 
-    bt = Backtest(df, MACDCross, trade_on_close=True)
-    # SmaCross,RSICross,MACDCross
+    # print(df)
+    # print(df2)
 
-    result = bt.optimize(
-        n1=range(5, 75, 5),
-        n2=range(10, 75, 5),
-        n3=range(10, 75, 5),
-        maximize='Return [%]',
-        constraint=lambda r: r.n1 < r.n2
-    )
 
+    bt, result, best_params  = run_optimized_backtest(df,SmaCross)
+
+    # # バックテストの実行
+    # bt = Backtest(df2, SmaCross)
     # result = bt.run()
+    # print(result)
 
-    print("最適化結果:")
+    # # 最適化の実行
+    # optimized_result = bt.optimize(
+    #     ns=range(5, 20, 5),
+    #     nl=range(10, 50, 10),
+    #     maximize="Return [%]",
+    #     constraint=lambda p: p.ns < p.nl  # ns < nl に変更
+    # )
+
+    # print("最適化結果:")
+    # print(optimized_result)
+
+
     print(result)
+    print(best_params)
+    
 
-    # 最適なパラメータ（ns, nl）を出力
-    best_n1 = result._strategy.n1
-    best_n2 = result._strategy.n2
-    best_n3 = result._strategy.n3
-    # print(f"最適なns: {best_ns}, 最適なnl: {best_nl}")
-
+    # 最適化結果でバックテスト
     bt.plot()
 
+
+    
