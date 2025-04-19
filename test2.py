@@ -385,7 +385,7 @@ if __name__ == '__main__':
 
     ticker = "5803.T_daily"
     ticker2 = "6146.T"
-    ticker3 = "285A.T"
+    ticker3 = "7012.T"
     df = get_stock_data(ticker)
     df.index.name = None  # ← インデックス名を削除
     df2 = get_stock_data_old(ticker2)
@@ -408,7 +408,7 @@ if __name__ == '__main__':
     # # 最適化の実行
     # optimized_result = bt.optimize(
     #     ns=range(5, 20, 5),
-    #     nl=range(10, 50, 10),
+    #     nl=range(10, 50, 10),;
     #     maximize="Return [%]",
     #     constraint=lambda p: p.ns < p.nl  # ns < nl に変更
     # )
@@ -422,6 +422,6 @@ if __name__ == '__main__':
     
 
     # 最適化結果でバックテスト
-    # bt.plot()
+    bt.plot()
 
 
