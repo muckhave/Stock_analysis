@@ -1,5 +1,3 @@
-
-
 if __name__ == '__main__':
     import pandas as pd
     import pandas_datareader.data as pdr
@@ -39,9 +37,20 @@ import pandas as pd
 import os
 import talib as ta
 
-def get_stock_data(ticker):
+def get_stock_data(ticker, drop_na=False, interpolate=False):
+    """
+    株価データを取得する関数。
+    欠損値処理をオプションで追加可能。
+
+    Args:
+        ticker (str): 銘柄コード
+        drop_na (bool): Trueの場合、欠損値を削除
+        interpolate (bool): Trueの場合、欠損値を補完
+
+    Returns:
+        pd.DataFrame: 株価データフレーム
+    """
     file_path = os.path.join("data/daily", f"{ticker}.csv")
-    # file_path = os.path.join("data/daily", f"{ticker}_daily.csv")
 
     # CSVを適切に読み込む
     df = pd.read_csv(file_path, index_col=0, parse_dates=True)
@@ -50,10 +59,17 @@ def get_stock_data(ticker):
     df.columns = ["Close", "High", "Low", "Open", "Volume"]
 
     # インデックスを datetime に変換（タイムゾーン削除）
-    df.index = pd.to_datetime(df.index).tz_localize(None)  # ここを追加
+    df.index = pd.to_datetime(df.index).tz_localize(None)
+
+    # 欠損値処理
+    if drop_na:
+        # 欠損値を削除
+        df = df.dropna()
+    elif interpolate:
+        # 欠損値を補完（線形補完を使用）
+        df = df.interpolate()
 
     return df
-
 
 
 def get_stock_data_test(ticker):
@@ -76,18 +92,38 @@ def get_stock_data_test(ticker):
     return df
 
 
-def get_stock_minute_data(ticker):
+def get_stock_minute_data(ticker, drop_na=False, interpolate=False):
+    """
+    分足データを取得する関数。
+    欠損値処理をオプションで追加可能。
+
+    Args:
+        ticker (str): 銘柄コード
+        drop_na (bool): Trueの場合、欠損値を削除
+        interpolate (bool): Trueの場合、欠損値を補完
+
+    Returns:
+        pd.DataFrame: 分足データフレーム
+    """
     file_path = os.path.join("data/minute", f"{ticker}_minute.csv")
-    
+
     # CSVを適切に読み込む
     df = pd.read_csv(file_path, index_col=0, parse_dates=True)
 
-        # 列名の順番を指定して設定
+    # 列名の順番を指定して設定
     df.columns = ["Close", "High", "Low", "Open", "Volume"]
-    
+
     # インデックスを datetime に変換（タイムゾーン削除）
-    df.index = pd.to_datetime(df.index).tz_localize(None)  # ここを追加
-    
+    df.index = pd.to_datetime(df.index).tz_localize(None)
+
+    # 欠損値処理
+    if drop_na:
+        # 欠損値を削除
+        df = df.dropna()
+    elif interpolate:
+        # 欠損値を補完（線形補完を使用）
+        df = df.interpolate()
+
     return df
 
 
@@ -353,13 +389,16 @@ if __name__ == '__main__':
     df = get_stock_data(ticker)
     df.index.name = None  # ← インデックス名を削除
     df2 = get_stock_data_old(ticker2)
-    df3 = get_stock_minute_data(ticker3)
+    df3 = get_stock_minute_data(ticker3,drop_na=True)
+    # 各列に欠損値があるか確認
+    print("各列の欠損値数:")
+    print(df3.isna().sum())
 
     # print(df)
     # print(df2)
 
 
-    bt, result, best_params  = run_optimized_backtest(df,SmaCross)
+    bt, result, best_params  = run_optimized_backtest(df3,SmaCross)
 
     # # バックテストの実行
     # bt = Backtest(df2, SmaCross)
@@ -383,7 +422,6 @@ if __name__ == '__main__':
     
 
     # 最適化結果でバックテスト
-    bt.plot()
+    # bt.plot()
 
 
-    
