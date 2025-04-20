@@ -143,6 +143,34 @@ def get_stock_data_old(ticker):
 
 from backtesting import Backtest
 
+
+def get_stock_name(ticker, csv_path="data/stock_id.csv"):
+    """
+    銘柄コードを引数に与えると、その銘柄名を返す関数。
+
+    Args:
+        ticker (str): 銘柄コード（例: "7012.T"）
+        csv_path (str): 東証プライム銘柄のCSVファイルパス
+
+    Returns:
+        str: 銘柄名（存在しない場合はNone）
+    """
+    if not os.path.exists(csv_path):
+        raise FileNotFoundError(f"CSVファイルが見つかりません: {csv_path}")
+    
+    # CSVファイルを読み込む
+    df = pd.read_csv(csv_path)
+    
+    # 銘柄コードから ".T" を削除
+    ticker_without_t = ticker.replace(".T", "")
+    
+    # 銘柄コードをキーにして銘柄名を取得
+    stock = df[df["コード"] == ticker_without_t]
+    if not stock.empty:
+        return stock.iloc[0]["銘柄名"]
+    else:
+        return None
+
 def run_optimized_backtest(df, strategy_class, maximize_metric='Return [%]', constraint=None, max_attempts=3):
     """
     売買ルールのクラス内のパラメータを使ってバックテストを最適化
@@ -390,36 +418,14 @@ if __name__ == '__main__':
     df.index.name = None  # ← インデックス名を削除
     df2 = get_stock_data_old(ticker2)
     df3 = get_stock_minute_data(ticker3,drop_na=True)
-    # 各列に欠損値があるか確認
-    print("各列の欠損値数:")
-    print(df3.isna().sum())
-
-    # print(df)
-    # print(df2)
-
 
     bt, result, best_params  = run_optimized_backtest(df3,SmaCross)
 
-    # # バックテストの実行
-    # bt = Backtest(df2, SmaCross)
-    # result = bt.run()
-    # print(result)
-
-    # # 最適化の実行
-    # optimized_result = bt.optimize(
-    #     ns=range(5, 20, 5),
-    #     nl=range(10, 50, 10),;
-    #     maximize="Return [%]",
-    #     constraint=lambda p: p.ns < p.nl  # ns < nl に変更
-    # )
-
-    # print("最適化結果:")
-    # print(optimized_result)
-
 
     print(result)
-    print(best_params)
-    
+    print(f"ベストなパラメータ：{best_params}")
+    print(get_stock_name(ticker2))
+    print(get_stock_name(ticker3))
 
     # 最適化結果でバックテスト
     bt.plot()

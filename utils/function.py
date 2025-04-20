@@ -1,6 +1,7 @@
 import pandas as pd
 import os
 import talib as ta
+from backtesting import Backteste
 
 def get_stock_data(ticker):
     file_path = os.path.join("data/daily", f"{ticker}.csv")
@@ -68,7 +69,33 @@ def get_stock_data_old(ticker):
     
     return df
 
-from backtesting import Backtest
+def get_stock_name(ticker, csv_path="data/stock_id.csv"):
+    """
+    銘柄コードを引数に与えると、その銘柄名を返す関数。
+
+    Args:
+        ticker (str): 銘柄コード（例: "7012.T"）
+        csv_path (str): 東証プライム銘柄のCSVファイルパス
+
+    Returns:
+        str: 銘柄名（存在しない場合はNone）
+    """
+    if not os.path.exists(csv_path):
+        raise FileNotFoundError(f"CSVファイルが見つかりません: {csv_path}")
+    
+    # CSVファイルを読み込む
+    df = pd.read_csv(csv_path)
+    
+    # 銘柄コードから ".T" を削除
+    ticker_without_t = ticker.replace(".T", "")
+    
+    # 銘柄コードをキーにして銘柄名を取得
+    stock = df[df["コード"] == ticker_without_t]
+    if not stock.empty:
+        return stock.iloc[0]["銘柄名"]
+    else:
+        return None
+
 
 def run_optimized_backtest(df, strategy_class, maximize_metric='Return [%]', constraint=None, max_attempts=3):
     """
@@ -99,3 +126,7 @@ def run_optimized_backtest(df, strategy_class, maximize_metric='Return [%]', con
     final_result = bt.run(**best_params)
     
     return bt, final_result, best_params
+
+
+
+
