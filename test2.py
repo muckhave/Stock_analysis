@@ -215,8 +215,7 @@ from backtesting.test import SMA
 import talib as ta
 
 class SmaCross(Strategy):
-    # ns = 0.5
-    # nl = 5
+
     ns = 5 
     nl = 25
 
@@ -419,10 +418,19 @@ if __name__ == '__main__':
     df2 = get_stock_data_old(ticker2)
     df3 = get_stock_minute_data(ticker3,drop_na=True)
 
-    bt, result, best_params  = run_optimized_backtest(df3,SmaCross)
+    # bt, result, best_params  = run_optimized_backtest(df,SmaCross)
+    bt, result, best_params  = run_optimized_backtest(df,RSICross)
+    # bt, result, best_params  = run_optimized_backtest(df,MACDCross)
+    # bt, result, best_params  = run_optimized_backtest(df,BollingerBandStrategy)
+    # bt, result, best_params  = run_optimized_backtest(df,RsiStrategy)
+    # bt, result, best_params  = run_optimized_backtest(df,MaDeviationStrategy)
+    # bt, result, best_params  = run_optimized_backtest(df,AtrTrailingStopStrategy)
+    print("最適化結果:")
 
 
     print(result)
+    return_percentage = result['Return [%]']
+    print(f"リターン: {return_percentage}%")
     print(f"ベストなパラメータ：{best_params}")
     print(get_stock_name(ticker2))
     print(get_stock_name(ticker3))
