@@ -50,7 +50,7 @@ def get_stock_data(ticker, drop_na=False, interpolate=False):
     Returns:
         pd.DataFrame: 株価データフレーム
     """
-    file_path = os.path.join("data/daily", f"{ticker}.csv")
+    file_path = os.path.join("data/daily", f"{ticker}_daily.csv")
 
     # CSVを適切に読み込む
     df = pd.read_csv(file_path, index_col=0, parse_dates=True)
@@ -200,6 +200,33 @@ def run_optimized_backtest(df, strategy_class, maximize_metric='Return [%]', con
     final_result = bt.run(**best_params)
     
     return bt, final_result, best_params
+
+
+
+def filter_stock_data_by_period(df, start_date=None, end_date=None, last_n_days=None):
+    """
+    指定した期間または直近の日数の株価データを返す関数。
+
+    Args:
+        df (pd.DataFrame): 株価データフレーム（インデックスはdatetime型）
+        start_date (str or datetime, optional): 開始日（例: "2023-01-01"）
+        end_date (str or datetime, optional): 終了日（例: "2023-12-31"）
+        last_n_days (int, optional): 直近の日数（例: 30）
+
+    Returns:
+        pd.DataFrame: 指定期間または直近の日数の株価データ
+    """
+    if last_n_days is not None:
+        # 直近の日数を計算
+        end_date = df.index.max()
+        start_date = end_date - pd.Timedelta(days=last_n_days)
+    
+    if start_date:
+        df = df[df.index >= pd.to_datetime(start_date)]
+    if end_date:
+        df = df[df.index <= pd.to_datetime(end_date)]
+    
+    return df
 
 
 ######################################## backtests.py ########################################
@@ -409,8 +436,11 @@ if __name__ == '__main__':
     # get_stock_minute_data(ticker)で分足の株価データフレームを返す
     ##########################################
 
+    # 調べたい銘柄を定義
+    tickers = ["7011.T", "6146.T", "7012.T"]
 
-    ticker = "5803.T_daily"
+
+    ticker = "7011.T"
     ticker2 = "6146.T"
     ticker3 = "7012.T"
     df = get_stock_data(ticker)
@@ -418,8 +448,11 @@ if __name__ == '__main__':
     df2 = get_stock_data_old(ticker2)
     df3 = get_stock_minute_data(ticker3,drop_na=True)
 
-    # bt, result, best_params  = run_optimized_backtest(df,SmaCross)
-    bt, result, best_params  = run_optimized_backtest(df,RSICross)
+    recent_data = filter_stock_data_by_period(df, last_n_days=200)
+
+
+    bt, result, best_params  = run_optimized_backtest(recent_data,SmaCross)
+    # bt, result, best_params  = run_optimized_backtest(df,RSICross)
     # bt, result, best_params  = run_optimized_backtest(df,MACDCross)
     # bt, result, best_params  = run_optimized_backtest(df,BollingerBandStrategy)
     # bt, result, best_params  = run_optimized_backtest(df,RsiStrategy)

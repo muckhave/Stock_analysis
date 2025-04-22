@@ -128,5 +128,31 @@ def run_optimized_backtest(df, strategy_class, maximize_metric='Return [%]', con
     return bt, final_result, best_params
 
 
+def filter_stock_data_by_period(df, start_date=None, end_date=None, last_n_days=None):
+    """
+    指定した期間または直近の日数の株価データを返す関数。
+
+    Args:
+        df (pd.DataFrame): 株価データフレーム（インデックスはdatetime型）
+        start_date (str or datetime, optional): 開始日（例: "2023-01-01"）
+        end_date (str or datetime, optional): 終了日（例: "2023-12-31"）
+        last_n_days (int, optional): 直近の日数（例: 30）
+
+    Returns:
+        pd.DataFrame: 指定期間または直近の日数の株価データ
+    """
+    if last_n_days is not None:
+        # 直近の日数を計算
+        end_date = df.index.max()
+        start_date = end_date - pd.Timedelta(days=last_n_days)
+    
+    if start_date:
+        df = df[df.index >= pd.to_datetime(start_date)]
+    if end_date:
+        df = df[df.index <= pd.to_datetime(end_date)]
+    
+    return df
+
+
 
 
