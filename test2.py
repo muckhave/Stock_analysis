@@ -203,30 +203,38 @@ def run_optimized_backtest(df, strategy_class, maximize_metric='Return [%]', con
 
 
 
-def filter_stock_data_by_period(df, start_date=None, end_date=None, last_n_days=None):
+def filter_stock_data_by_period(df, start_date=None, end_date=None, last_n_days=None, days_ago=None, lookback_days=None):
     """
-    指定した期間または直近の日数の株価データを返す関数。
+    指定した期間、直近の日数、または指定日数前から過去のデータを取得する関数。
 
     Args:
         df (pd.DataFrame): 株価データフレーム（インデックスはdatetime型）
         start_date (str or datetime, optional): 開始日（例: "2023-01-01"）
         end_date (str or datetime, optional): 終了日（例: "2023-12-31"）
         last_n_days (int, optional): 直近の日数（例: 30）
+        days_ago (int, optional): 指定日数前（例: 10）
+        lookback_days (int, optional): 過去のデータ日数（例: 5）
 
     Returns:
-        pd.DataFrame: 指定期間または直近の日数の株価データ
+        pd.DataFrame: 指定された条件に基づく株価データ
     """
-    if last_n_days is not None:
-        # 直近の日数を計算
+    # 指定日数前から過去のデータを取得
+    if days_ago is not None and lookback_days is not None:
+        end_date = df.index.max() - pd.Timedelta(days=days_ago)
+        start_date = end_date - pd.Timedelta(days=lookback_days)
+    # 直近の日数を取得
+    elif last_n_days is not None:
         end_date = df.index.max()
         start_date = end_date - pd.Timedelta(days=last_n_days)
     
+    # 開始日と終了日でフィルタリング
     if start_date:
         df = df[df.index >= pd.to_datetime(start_date)]
     if end_date:
         df = df[df.index <= pd.to_datetime(end_date)]
     
     return df
+
 
 
 ######################################## backtests.py ########################################
@@ -448,7 +456,7 @@ if __name__ == '__main__':
     df2 = get_stock_data_old(ticker2)
     df3 = get_stock_minute_data(ticker3,drop_na=True)
 
-    recent_data = filter_stock_data_by_period(df, last_n_days=200)
+    recent_data = filter_stock_data_by_period(df, days_ago=0, lookback_days=9999)
 
 
     bt, result, best_params  = run_optimized_backtest(recent_data,SmaCross)
