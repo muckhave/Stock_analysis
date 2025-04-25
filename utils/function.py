@@ -160,6 +160,3 @@ def filter_stock_data_by_period(df, start_date=None, end_date=None, last_n_days=
     
     return df
 
-
-
-

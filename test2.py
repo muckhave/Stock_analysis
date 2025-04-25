@@ -430,6 +430,35 @@ class AtrTrailingStopStrategy(Strategy):
             self.position.close()
 
 
+# RSIシグナル戦略
+class RSISignalStrategy(Strategy):
+    rsi_period = 14  # RSIの計算期間
+    rsi_signal = 50  # シグナル値
+
+    @classmethod
+    def get_optimize_params(cls):
+        """
+        最適化用のパラメータ範囲を定義
+        """
+        return {
+            "rsi_period": range(10, 30, 2),  # RSI期間の範囲
+            "rsi_signal": range(40, 60, 5),  # シグナル値の範囲
+        }
+
+    def init(self):
+        """
+        初期化処理: RSIを計算
+        """
+        self.rsi = self.I(ta.RSI, self.data["Close"], self.rsi_period)
+
+    def next(self):
+        """
+        毎バーの処理: RSIがシグナル値を超えた場合に売買シグナルを生成
+        """
+        if self.rsi[-1] > self.rsi_signal:
+            self.buy()  # RSIがシグナル値を超えたら買い
+        elif self.rsi[-1] < self.rsi_signal:
+            self.position.close()  # RSIがシグナル値を下回ったらポジションを閉じる
 
 
 
@@ -459,24 +488,27 @@ if __name__ == '__main__':
     recent_data = filter_stock_data_by_period(df, days_ago=0, lookback_days=9999)
 
 
-    bt, result, best_params  = run_optimized_backtest(recent_data,SmaCross)
-    # bt, result, best_params  = run_optimized_backtest(df,RSICross)
+    # bt, result, best_params  = run_optimized_backtest(recent_data,SmaCross)
+    bt, result, best_params  = run_optimized_backtest(recent_data,RSICross)
+    # bt, result, best_params  = run_optimized_backtest(recent_data,RSISignalStrategy)
     # bt, result, best_params  = run_optimized_backtest(df,MACDCross)
     # bt, result, best_params  = run_optimized_backtest(df,BollingerBandStrategy)
     # bt, result, best_params  = run_optimized_backtest(df,RsiStrategy)
     # bt, result, best_params  = run_optimized_backtest(df,MaDeviationStrategy)
     # bt, result, best_params  = run_optimized_backtest(df,AtrTrailingStopStrategy)
     print("最適化結果:")
-
-
     print(result)
     return_percentage = result['Return [%]']
     print(f"リターン: {return_percentage}%")
     print(f"ベストなパラメータ：{best_params}")
-    print(get_stock_name(ticker2))
-    print(get_stock_name(ticker3))
 
-    # 最適化結果でバックテスト
-    bt.plot()
+    # HTML出力先を指定
+    output_dir = "backtest_results"  # 保存先フォルダ
+    os.makedirs(output_dir, exist_ok=True)  # フォルダがなければ作成
+    output_file = os.path.join(output_dir, "backtest_result.html")
+
+    # プロットをHTMLファイルに保存
+    bt.plot(filename=output_file)
+    print(f"バックテスト結果を {output_file} に保存しました！")
 
 

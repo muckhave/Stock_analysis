@@ -98,3 +98,8 @@
 2025-04-19 13:15:16.928107 - 2502.T - ファイル保存エラー: '<' not supported between instances of 'Timestamp' and 'str'
 2025-04-19 13:15:18.242211 - 5802.T - ファイル保存エラー: '<' not supported between instances of 'Timestamp' and 'str'
 2025-04-19 13:15:19.566456 - ^N225 - ファイル保存エラー: '<' not supported between instances of 'Timestamp' and 'str'
+2025-04-26 05:29:29.981120 - 7012.T - 422 Client Error: Unprocessable Entity for url: https://query1.finance.yahoo.com/v8/finance/chart/7012.T?interval=5m&range=100d
+2025-04-26 05:29:31.228435 - 7011.T - 422 Client Error: Unprocessable Entity for url: https://query1.finance.yahoo.com/v8/finance/chart/7011.T?interval=5m&range=100d
+2025-04-26 05:29:32.481567 - 6146.T - 422 Client Error: Unprocessable Entity for url: https://query1.finance.yahoo.com/v8/finance/chart/6146.T?interval=5m&range=100d
+2025-04-26 05:29:33.700907 - 6857.T - 422 Client Error: Unprocessable Entity for url: https://query1.finance.yahoo.com/v8/finance/chart/6857.T?interval=5m&range=100d
+2025-04-26 05:35:32.733672 - 6857.T - ファイル保存エラー: [Errno 13] Permission denied: 'data\\daily\\6857.T_daily.csv'

@@ -1,1 +1,3 @@
 venv/
+# backtest_resultsフォルダをGitの管理対象外にする
+backtest_results/
