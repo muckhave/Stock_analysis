@@ -36,6 +36,7 @@ if __name__ == '__main__':
 import pandas as pd
 import os
 import talib as ta
+from datetime import datetime
 
 def get_stock_data(ticker, drop_na=False, interpolate=False):
     """
@@ -239,6 +240,45 @@ def filter_stock_data_by_period(df, start_date=None, end_date=None, last_n_days=
     return df
 
 
+
+
+
+
+def save_backtest_results(result, best_params, ticker_id, ticker_name, interval, output_file="data/backtest_results.csv"):
+    """
+    バックテスト結果をCSVファイルに蓄積する関数。
+
+    Args:
+        result (dict): バックテスト結果（resultに格納されている情報）
+        best_params (dict): ベストなパラメータ
+        ticker_id (str): 対象銘柄ID
+        ticker_name (str): 対象銘柄名
+        interval (str): データのインターバル（例: "daily", "minute"）
+        output_file (str): 結果を保存するCSVファイルのパス
+    """
+    # 実行日時を取得
+    execution_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    # 保存するデータを作成
+    data = {
+        "実行日時": execution_time,
+        "対象銘柄ID": ticker_id,
+        "対象銘柄名": ticker_name,
+        "データのインターバル": interval,
+        **result,  # resultの内容を展開
+        "ベストなパラメータ": str(best_params)  # 辞書を文字列として保存
+    }
+
+    # データをデータフレームに変換
+    df = pd.DataFrame([data])
+
+    # CSVファイルに追記（存在しない場合は新規作成）
+    if not os.path.exists(output_file):
+        df.to_csv(output_file, index=False, encoding="utf-8-sig")
+    else:
+        df.to_csv(output_file, index=False, mode="a", header=False, encoding="utf-8-sig")
+
+    print(f"バックテスト結果を {output_file} に保存しました！")
 
 ######################################## backtests.py ########################################
 
@@ -527,7 +567,7 @@ if __name__ == '__main__':
     ticker = "7011.T"
     ticker2 = "6146.T"
     ticker3 = "7012.T"
-    df = get_stock_data(ticker3,drop_na=True)
+    df = get_stock_data(ticker,drop_na=True)
     df.index.name = None  # ← インデックス名を削除/
     df2 = get_stock_data_old(ticker2)
     df3 = get_stock_minute_data(ticker3,drop_na=True)
@@ -562,5 +602,12 @@ if __name__ == '__main__':
     # プロットをHTMLファイルに保存
     bt.plot(filename=output_file)
     print(f"バックテスト結果を {output_file} に保存しました！")
+
+    # バックテスト結果を保存
+    # 銘柄名を取得
+    ticker_name = get_stock_name(ticker)
+
+    # バックテスト結果を保存
+    save_backtest_results(result, best_params, ticker3, ticker_name, "daily")
 
 
