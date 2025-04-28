@@ -133,7 +133,7 @@ if __name__ == "__main__":
     ]
 
     # 日足データを取得
-    fetch_and_save_all_symbols(symbols, interval="1d", range_period="2y", data_type="daily")
+    fetch_and_save_all_symbols(symbols, interval="1d", range_period="60d", data_type="daily")
 
     # 分足データを取得（例: 5分足、過去7日間）
     fetch_and_save_all_symbols(symbols, interval="5m", range_period="60d", data_type="minute")

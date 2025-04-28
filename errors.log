@@ -103,3 +103,4 @@
 2025-04-26 05:29:32.481567 - 6146.T - 422 Client Error: Unprocessable Entity for url: https://query1.finance.yahoo.com/v8/finance/chart/6146.T?interval=5m&range=100d
 2025-04-26 05:29:33.700907 - 6857.T - 422 Client Error: Unprocessable Entity for url: https://query1.finance.yahoo.com/v8/finance/chart/6857.T?interval=5m&range=100d
 2025-04-26 05:35:32.733672 - 6857.T - ファイル保存エラー: [Errno 13] Permission denied: 'data\\daily\\6857.T_daily.csv'
+2025-04-28 23:38:42.743786 - 6273.T - ファイル保存エラー: [Errno 13] Permission denied: 'data\\daily\\6273.T_daily.csv'

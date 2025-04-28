@@ -58,8 +58,11 @@ def get_stock_data(ticker, drop_na=False, interpolate=False):
     # 列名の順番を指定して設定
     df.columns = ["Close", "High", "Low", "Open", "Volume"]
 
-    # インデックスを datetime に変換（タイムゾーン削除）
-    df.index = pd.to_datetime(df.index).tz_localize(None)
+    # インデックスを datetime に変換
+    df.index = pd.to_datetime(df.index)
+    df.index = df.index.tz_localize(None)  # タイムゾーンなし
+    df.index = df.index.floor('D')
+
 
     # 欠損値処理
     if drop_na:
@@ -68,7 +71,8 @@ def get_stock_data(ticker, drop_na=False, interpolate=False):
     elif interpolate:
         # 欠損値を補完（線形補完を使用）
         df = df.interpolate()
-
+    
+    print(df)
     return df
 
 
@@ -113,8 +117,9 @@ def get_stock_minute_data(ticker, drop_na=False, interpolate=False):
     # 列名の順番を指定して設定
     df.columns = ["Close", "High", "Low", "Open", "Volume"]
 
-    # インデックスを datetime に変換（タイムゾーン削除）
-    df.index = pd.to_datetime(df.index).tz_localize(None)
+    # インデックスを datetime に変換
+    df.index = pd.to_datetime(df.index)
+    df.index = df.index.tz_localize(None)  # タイムゾーンなし
 
     # 欠損値処理
     if drop_na:
@@ -172,11 +177,7 @@ def get_stock_name(ticker, csv_path="data/stock_id.csv"):
         return None
 
 def run_optimized_backtest(df, strategy_class, maximize_metric='Return [%]', constraint=None, max_attempts=3):
-    """
-    売買ルールのクラス内のパラメータを使ってバックテストを最適化
-    """
     bt = Backtest(df, strategy_class, trade_on_close=True)
-    # クラスから最適化パラメータを取得
     optimize_params = strategy_class.get_optimize_params()
 
     attempt = 0
@@ -188,17 +189,19 @@ def run_optimized_backtest(df, strategy_class, maximize_metric='Return [%]', con
                 maximize=maximize_metric,
                 constraint=constraint
             )
-            break  # 成功したらループを抜ける
+            break
         except Exception as e:
             print(f"最適化エラー (試行 {attempt+1}/{max_attempts}): {e}")
+            print("データの先頭:", df.head())  # デバッグ用
+            print("データの末尾:", df.tail())  # デバッグ用
             attempt += 1
-    
+
     if optimized_result is None:
         raise RuntimeError("最適化に失敗しました")
-    
+
     best_params = {key: getattr(optimized_result._strategy, key) for key in optimize_params.keys()}
     final_result = bt.run(**best_params)
-    
+
     return bt, final_result, best_params
 
 
@@ -335,8 +338,8 @@ class BollingerBandStrategy(Strategy):
     @classmethod
     def get_optimize_params(cls):
         return {
-            "window": range(10, 50, 5),
-            "dev": [1.5, 2, 2.5, 3],
+            "window": range(10, 50, 5),  # 窓幅を適切に設定
+            "dev": [1.5, 2, 2.5, 3],    # 標準偏差の倍率
         }
 
     def init(self):
@@ -461,6 +464,50 @@ class RSISignalStrategy(Strategy):
             self.position.close()  # RSIがシグナル値を下回ったらポジションを閉じる
 
 
+# RSI + MACD戦略
+class RsiMacdStrategy(Strategy):
+    rsi_period = 14
+    rsi_buy_threshold = 30
+    rsi_sell_threshold = 70
+    macd_fast = 12
+    macd_slow = 26
+    macd_signal = 9
+
+    @classmethod
+    def get_optimize_params(cls):
+        return {
+            "rsi_period": range(10, 20, 2),
+            "rsi_buy_threshold": range(20, 40, 5),
+            "rsi_sell_threshold": range(60, 80, 5),
+            "macd_fast": range(5, 15, 2),
+            "macd_slow": range(15, 30, 2),
+            "macd_signal": range(5, 15, 2),
+        }
+
+    def init(self):
+        # 明示的に numpy.ndarray に変換
+        close = np.asarray(self.data["Close"])
+        
+        # RSIの計算
+        self.rsi = self.I(ta.RSI, close, self.rsi_period)
+        
+        # MACDの計算
+        self.macd, self.macd_signal, _ = self.I(
+            ta.MACD,
+            close,  # numpy.ndarrayを渡す
+            fastperiod=self.macd_fast,
+            slowperiod=self.macd_slow,
+            signalperiod=self.macd_signal,
+        )
+
+    def next(self):
+        # 買い条件: RSIが売られすぎ & MACDがシグナルラインを上抜け
+        if self.rsi[-1] < self.rsi_buy_threshold and crossover(self.macd, self.macd_signal):
+            self.buy()
+
+        # 売り条件: RSIが買われすぎ & MACDがシグナルラインを下抜け
+        elif self.rsi[-1] > self.rsi_sell_threshold and crossover(self.macd_signal, self.macd):
+            self.position.close()
 
 
 
@@ -480,22 +527,27 @@ if __name__ == '__main__':
     ticker = "7011.T"
     ticker2 = "6146.T"
     ticker3 = "7012.T"
-    df = get_stock_data(ticker)
-    df.index.name = None  # ← インデックス名を削除
+    df = get_stock_data(ticker3,drop_na=True)
+    df.index.name = None  # ← インデックス名を削除/
     df2 = get_stock_data_old(ticker2)
     df3 = get_stock_minute_data(ticker3,drop_na=True)
 
     recent_data = filter_stock_data_by_period(df, days_ago=0, lookback_days=9999)
 
+    print(recent_data)
 
-    # bt, result, best_params  = run_optimized_backtest(recent_data,SmaCross)
-    bt, result, best_params  = run_optimized_backtest(recent_data,RSICross)
+    # 必要に応じて型を変換
+    recent_data["Close"] = pd.to_numeric(recent_data["Close"], errors="coerce")
+
+    bt, result, best_params  = run_optimized_backtest(recent_data,SmaCross)
+    # bt, result, best_params  = run_optimized_backtest(recent_data,RSICross)
     # bt, result, best_params  = run_optimized_backtest(recent_data,RSISignalStrategy)
-    # bt, result, best_params  = run_optimized_backtest(df,MACDCross)
-    # bt, result, best_params  = run_optimized_backtest(df,BollingerBandStrategy)
-    # bt, result, best_params  = run_optimized_backtest(df,RsiStrategy)
-    # bt, result, best_params  = run_optimized_backtest(df,MaDeviationStrategy)
-    # bt, result, best_params  = run_optimized_backtest(df,AtrTrailingStopStrategy)
+    # bt, result, best_params  = run_optimized_backtest(recent_data,MACDCross)
+    # bt, result, best_params  = run_optimized_backtest(recent_data,MaDeviationStrategy)
+    # bt, result, best_params  = run_optimized_backtest(recent_data,BollingerBandStrategy)
+    # bt, result, best_params  = run_optimized_backtest(recent_data,RsiStrategy)
+    # bt, result, best_params  = run_optimized_backtest(recent_data,AtrTrailingStopStrategy)
+    # bt, result, best_params  = run_optimized_backtest(recent_data,RsiMacdStrategy)
     print("最適化結果:")
     print(result)
     return_percentage = result['Return [%]']
