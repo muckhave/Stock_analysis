@@ -62,6 +62,6 @@ if __name__ == '__main__':
     output_file = os.path.join(output_dir, "backtest_result.html")
 
     # プロットをHTMLファイルに保存
-    bt.plot(filename=output_file)
+    # bt.plot(filename=output_file)
     print(f"バックテスト結果を {output_file} に保存しました！")
 

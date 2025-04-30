@@ -178,7 +178,7 @@ def get_stock_name(ticker, csv_path="data/stock_id.csv"):
         return None
 
 def run_optimized_backtest(df, strategy_class, maximize_metric='Return [%]', constraint=None, max_attempts=3):
-    bt = Backtest(df, strategy_class, trade_on_close=True)
+    bt = Backtest(df, strategy_class, trade_on_close=True, cash=100000)
     optimize_params = strategy_class.get_optimize_params()
 
     attempt = 0
@@ -293,8 +293,7 @@ from backtesting.test import SMA
 import talib as ta
 
 class SmaCross(Strategy):
-
-    ns = 5 
+    ns = 5
     nl = 25
 
     @classmethod
@@ -302,20 +301,20 @@ class SmaCross(Strategy):
         return {
             "ns": range(5, 25, 5),
             "nl": range(5, 75, 5),
-            # "ns": range(0.5, 2.5, 0.5),
-            # "nl": range(0.5, 5, 0.5),
         }
 
     def init(self):
         self.smaS = self.I(SMA, self.data["Close"], self.ns)
         self.smaL = self.I(SMA, self.data["Close"], self.nl)
+        self.buy_signals = []  # 買いシグナルを記録するリスト（インスタンス属性として初期化）
 
     def next(self):
         if crossover(self.smaS, self.smaL):
             self.buy()
+            self.buy_signals.append(self.data.index[-1])  # 買いシグナルの日時を記録
         elif crossover(self.smaL, self.smaS):
             self.position.close()
-
+            
 
 def RSI(close,n1,n2):
     rsiS = ta.RSI(close,timeperiod=n1)
@@ -334,12 +333,14 @@ class RSICross(Strategy):
         }
 
     def init(self):
-        self.rsiS,self.rsiL = self.I(RSI,self.data.Close,self.ns,self.nl)
+        self.rsiS, self.rsiL = self.I(RSI, self.data.Close, self.ns, self.nl)
+        self.buy_signals = []  # 買いシグナルを記録するリスト
 
     def next(self):
-        if crossover(self.rsiS,self.rsiL):
+        if crossover(self.rsiS, self.rsiL):
             self.buy()
-        elif crossover(self.rsiL,self.rsiS):
+            self.buy_signals.append(self.data.index[-1])  # 買いシグナルの日時を記録
+        elif crossover(self.rsiL, self.rsiS):
             self.position.close()
 
 
@@ -349,7 +350,7 @@ def MACD(close,n1,n2,n3):
     return macd,macdsignal
 
 class MACDCross(Strategy):
-    n1 = 12 
+    n1 = 12
     n2 = 26
     n3 = 9
 
@@ -362,13 +363,15 @@ class MACDCross(Strategy):
         }
 
     def init(self):
-        self.macd,self.macdsignal= self.I(MACD,self.data["Close"],self.n1,self.n2,self.n3)
+        self.macd, self.macdsignal = self.I(MACD, self.data["Close"], self.n1, self.n2, self.n3)
+        self.buy_signals = []  # 買いシグナルを記録するリスト
 
     def next(self):
-        if crossover(self.macd,self.macdsignal):
+        if crossover(self.macd, self.macdsignal):
             self.buy()
-        elif crossover(self.macdsignal,self.macd):
-            self.position.close() 
+            self.buy_signals.append(self.data.index[-1])  # 買いシグナルの日時を記録
+        elif crossover(self.macdsignal, self.macd):
+            self.position.close()
                      
 # ボリンジャーバンド戦略
 class BollingerBandStrategy(Strategy):
@@ -378,8 +381,8 @@ class BollingerBandStrategy(Strategy):
     @classmethod
     def get_optimize_params(cls):
         return {
-            "window": range(10, 50, 5),  # 窓幅を適切に設定
-            "dev": [1.5, 2, 2.5, 3],    # 標準偏差の倍率
+            "window": range(10, 50, 5),
+            "dev": [1.5, 2, 2.5, 3],
         }
 
     def init(self):
@@ -387,10 +390,12 @@ class BollingerBandStrategy(Strategy):
         std = self.I(lambda x, y: x.rolling(y).std(), self.data["Close"], self.window)
         self.upper = mid + self.dev * std
         self.lower = mid - self.dev * std
+        self.buy_signals = []  # 買いシグナルを記録するリスト
 
     def next(self):
         if self.data.Close[-1] < self.lower[-1]:
             self.buy()
+            self.buy_signals.append(self.data.index[-1])  # 買いシグナルの日時を記録
         elif self.data.Close[-1] > self.upper[-1]:
             self.position.close()
 
@@ -563,51 +568,68 @@ if __name__ == '__main__':
     # 調べたい銘柄を定義
     tickers = ["7011.T", "6146.T", "7012.T"]
 
+    best_bt = None  # 最も利益が良かったバックテストオブジェクト
+    best_result = None  # 最適化結果を記録する変数
+    max_return = float('-inf')  # 最大リターンを記録する変数
+    best_params_all = []  # 全ての最適化パラメータを記録するリスト
 
-    ticker = "7011.T"
-    ticker2 = "6146.T"
-    ticker3 = "7012.T"
-    df = get_stock_data(ticker,drop_na=True)
-    df.index.name = None  # ← インデックス名を削除/
-    df2 = get_stock_data_old(ticker2)
-    df3 = get_stock_minute_data(ticker3,drop_na=True)
+    # 買いシグナルが出た銘柄を格納するリスト
+    buy_signal_tickers = []
 
-    recent_data = filter_stock_data_by_period(df, days_ago=0, lookback_days=9999)
+    for ticker in tickers:
+        df = get_stock_data(ticker, drop_na=True)
+        recent_data = filter_stock_data_by_period(df, days_ago=0, lookback_days=9999)
 
-    print(recent_data)
+        # バックテストを実行
+        bt, result, best_params = run_optimized_backtest(recent_data, SmaCross)
 
-    # 必要に応じて型を変換
-    recent_data["Close"] = pd.to_numeric(recent_data["Close"], errors="coerce")
+        print("最適化結果:")
+        print(result)
+        return_percentage = result['Return [%]']
+        print(f"リターン: {return_percentage}%")
+        print(f"ベストなパラメータ：{best_params}")
 
-    bt, result, best_params  = run_optimized_backtest(recent_data,SmaCross)
-    # bt, result, best_params  = run_optimized_backtest(recent_data,RSICross)
-    # bt, result, best_params  = run_optimized_backtest(recent_data,RSISignalStrategy)
-    # bt, result, best_params  = run_optimized_backtest(recent_data,MACDCross)
-    # bt, result, best_params  = run_optimized_backtest(recent_data,MaDeviationStrategy)
-    # bt, result, best_params  = run_optimized_backtest(recent_data,BollingerBandStrategy)
-    # bt, result, best_params  = run_optimized_backtest(recent_data,RsiStrategy)
-    # bt, result, best_params  = run_optimized_backtest(recent_data,AtrTrailingStopStrategy)
-    # bt, result, best_params  = run_optimized_backtest(recent_data,RsiMacdStrategy)
-    print("最適化結果:")
-    print(result)
-    return_percentage = result['Return [%]']
-    print(f"リターン: {return_percentage}%")
-    print(f"ベストなパラメータ：{best_params}")
+        # 最大リターンを更新し、最も利益が良かったbtを記録
+        if return_percentage > max_return:
+            max_return = return_percentage
+            best_bt = bt
+            best_result = result
+            best_params_all = best_params
 
-    # HTML出力先を指定
-    output_dir = "backtest_results"  # 保存先フォルダ
-    os.makedirs(output_dir, exist_ok=True)  # フォルダがなければ作成
-    output_file = os.path.join(output_dir, "backtest_result.html")
+        # バックテスト結果を保存
+        ticker_name = get_stock_name(ticker)
+        save_backtest_results(result, best_params, ticker, ticker_name, "daily")
+
+        # 戦略クラスのインスタンスを取得
+        strategy_instance = bt._strategy  # bt.run() の結果から戦略インスタンスを取得
+        print(bt._strategy)  # 戦略インスタンスが正しく取得されているか確認
+        if len(recent_data) >= 2:
+            recent_signals = [
+                signal for signal in strategy_instance.buy_signals
+                if signal >= recent_data.index[-2]  # 直近2日間のシグナルを取得
+            ]
+        else:
+            recent_signals = []
+
+        # 買いシグナルがあるか確認
+        if recent_signals:
+            buy_signal_tickers.append(ticker)
+
+    # 買いシグナルが出た銘柄を表示
+    if buy_signal_tickers:
+        print("\n直近2日間で買いシグナルが出た銘柄:")
+        for ticker in buy_signal_tickers:
+            print(f"- {ticker}")
+    else:
+        print("\n直近2日間で買いシグナルが出た銘柄はありません。")
 
     # プロットをHTMLファイルに保存
-    bt.plot(filename=output_file)
-    print(f"バックテスト結果を {output_file} に保存しました！")
+    if best_bt:
+        best_bt.plot(filename=output_file)
+        print(f"バックテスト結果を {output_file} に保存しました！")
+    else:
+        print("最も利益が良かったバックテストが見つかりませんでした。")
 
-    # バックテスト結果を保存
-    # 銘柄名を取得
-    ticker_name = get_stock_name(ticker)
 
-    # バックテスト結果を保存
-    save_backtest_results(result, best_params, ticker3, ticker_name, "daily")
 
 
