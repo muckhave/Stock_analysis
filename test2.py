@@ -593,7 +593,7 @@ if __name__ == '__main__':
     buy_signal_tickers = []
 
     for ticker in tickers:
-        df = get_stock_data(ticker, drop_na=True)
+        df = get_stock_minute_data(ticker, drop_na=True)
         recent_data = filter_stock_data_by_period(df, days_ago=0, lookback_days=9999)
 
         # バックテストを実行
