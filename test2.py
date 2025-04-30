@@ -203,7 +203,23 @@ def run_optimized_backtest(df, strategy_class, maximize_metric='Return [%]', con
     best_params = {key: getattr(optimized_result._strategy, key) for key in optimize_params.keys()}
     final_result = bt.run(**best_params)
 
-    return bt, final_result, best_params
+    # 戦略インスタンスを取得
+    strategy_instance = final_result._strategy  # 修正: 正しいインスタンスを取得
+
+    # 直近2日に買いシグナルがあるかを判定
+    if len(df) >= 2:
+        recent_signals = [
+            signal for signal in strategy_instance.buy_signals
+            if signal >= df.index[-2]  # 直近2日間のシグナルを取得
+        ]
+    else:
+        recent_signals = []
+
+    has_recent_buy_signal = len(recent_signals) > 0
+
+    print(strategy_instance)  # 戦略インスタンスが正しく取得されているか確認
+
+    return bt, final_result, best_params, has_recent_buy_signal
 
 
 
@@ -581,7 +597,7 @@ if __name__ == '__main__':
         recent_data = filter_stock_data_by_period(df, days_ago=0, lookback_days=9999)
 
         # バックテストを実行
-        bt, result, best_params = run_optimized_backtest(recent_data, SmaCross)
+        bt, result, best_params, has_recent_buy_signal = run_optimized_backtest(recent_data, SmaCross)
 
         print("最適化結果:")
         print(result)
@@ -600,19 +616,8 @@ if __name__ == '__main__':
         ticker_name = get_stock_name(ticker)
         save_backtest_results(result, best_params, ticker, ticker_name, "daily")
 
-        # 戦略クラスのインスタンスを取得
-        strategy_instance = bt._strategy  # bt.run() の結果から戦略インスタンスを取得
-        print(bt._strategy)  # 戦略インスタンスが正しく取得されているか確認
-        if len(recent_data) >= 2:
-            recent_signals = [
-                signal for signal in strategy_instance.buy_signals
-                if signal >= recent_data.index[-2]  # 直近2日間のシグナルを取得
-            ]
-        else:
-            recent_signals = []
-
-        # 買いシグナルがあるか確認
-        if recent_signals:
+        # 直近2日に買いシグナルがある場合、リストに追加
+        if has_recent_buy_signal:
             buy_signal_tickers.append(ticker)
 
     # 買いシグナルが出た銘柄を表示
@@ -623,12 +628,7 @@ if __name__ == '__main__':
     else:
         print("\n直近2日間で買いシグナルが出た銘柄はありません。")
 
-    # プロットをHTMLファイルに保存
-    if best_bt:
-        best_bt.plot(filename=output_file)
-        print(f"バックテスト結果を {output_file} に保存しました！")
-    else:
-        print("最も利益が良かったバックテストが見つかりませんでした。")
+    best_bt.plot(filename="backtest_result.html")
 
 
 
