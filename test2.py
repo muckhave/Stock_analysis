@@ -208,18 +208,24 @@ def run_optimized_backtest(df, strategy_class, maximize_metric='Return [%]', con
 
     # 直近2日に買いシグナルがあるかを判定
     if len(df) >= 2:
-        recent_signals = [
+        recent_buy_signals = [
             signal for signal in strategy_instance.buy_signals
-            if signal >= df.index[-2]  # 直近2日間のシグナルを取得
+            if signal >= df.index[-2]  # 直近2日間の買いシグナルを取得
+        ]
+        recent_sell_signals = [
+            signal for signal in strategy_instance.sell_signals
+            if signal >= df.index[-2]  # 直近2日間の売りシグナルを取得
         ]
     else:
-        recent_signals = []
+        recent_buy_signals = []
+        recent_sell_signals = []
 
-    has_recent_buy_signal = len(recent_signals) > 0
+    has_recent_buy_signal = len(recent_buy_signals) > 0
+    has_recent_sell_signal = len(recent_sell_signals) > 0
 
     print(strategy_instance)  # 戦略インスタンスが正しく取得されているか確認
 
-    return bt, final_result, best_params, has_recent_buy_signal
+    return bt, final_result, best_params, has_recent_buy_signal, has_recent_sell_signal
 
 
 
@@ -322,7 +328,8 @@ class SmaCross(Strategy):
     def init(self):
         self.smaS = self.I(SMA, self.data["Close"], self.ns)
         self.smaL = self.I(SMA, self.data["Close"], self.nl)
-        self.buy_signals = []  # 買いシグナルを記録するリスト（インスタンス属性として初期化）
+        self.buy_signals = []  # 買いシグナルを記録するリスト
+        self.sell_signals = []  # 売りシグナルを記録するリスト
 
     def next(self):
         if crossover(self.smaS, self.smaL):
@@ -330,7 +337,8 @@ class SmaCross(Strategy):
             self.buy_signals.append(self.data.index[-1])  # 買いシグナルの日時を記録
         elif crossover(self.smaL, self.smaS):
             self.position.close()
-            
+            self.sell_signals.append(self.data.index[-1])  # 売りシグナルの日時を記録
+
 
 def RSI(close,n1,n2):
     rsiS = ta.RSI(close,timeperiod=n1)
@@ -351,6 +359,7 @@ class RSICross(Strategy):
     def init(self):
         self.rsiS, self.rsiL = self.I(RSI, self.data.Close, self.ns, self.nl)
         self.buy_signals = []  # 買いシグナルを記録するリスト
+        self.sell_signals = []  # 売りシグナルを記録するリスト
 
     def next(self):
         if crossover(self.rsiS, self.rsiL):
@@ -358,6 +367,7 @@ class RSICross(Strategy):
             self.buy_signals.append(self.data.index[-1])  # 買いシグナルの日時を記録
         elif crossover(self.rsiL, self.rsiS):
             self.position.close()
+            self.sell_signals.append(self.data.index[-1])  # 売りシグナルの日時を記録
 
 
 def MACD(close,n1,n2,n3):
@@ -381,6 +391,7 @@ class MACDCross(Strategy):
     def init(self):
         self.macd, self.macdsignal = self.I(MACD, self.data["Close"], self.n1, self.n2, self.n3)
         self.buy_signals = []  # 買いシグナルを記録するリスト
+        self.sell_signals = []  # 売りシグナルを記録するリスト
 
     def next(self):
         if crossover(self.macd, self.macdsignal):
@@ -388,6 +399,7 @@ class MACDCross(Strategy):
             self.buy_signals.append(self.data.index[-1])  # 買いシグナルの日時を記録
         elif crossover(self.macdsignal, self.macd):
             self.position.close()
+            self.sell_signals.append(self.data.index[-1])  # 売りシグナルの日時を記録
                      
 # ボリンジャーバンド戦略
 class BollingerBandStrategy(Strategy):
@@ -407,6 +419,7 @@ class BollingerBandStrategy(Strategy):
         self.upper = mid + self.dev * std
         self.lower = mid - self.dev * std
         self.buy_signals = []  # 買いシグナルを記録するリスト
+        self.sell_signals = []  # 売りシグナルを記録するリスト
 
     def next(self):
         if self.data.Close[-1] < self.lower[-1]:
@@ -414,6 +427,7 @@ class BollingerBandStrategy(Strategy):
             self.buy_signals.append(self.data.index[-1])  # 買いシグナルの日時を記録
         elif self.data.Close[-1] > self.upper[-1]:
             self.position.close()
+            self.sell_signals.append(self.data.index[-1])  # 売りシグナルの日時を記録
 
 
 # RSIオーバーソールド戦略
@@ -432,12 +446,16 @@ class RsiStrategy(Strategy):
 
     def init(self):
         self.rsi = self.I(RSI, self.data["Close"], self.rsi_period)
+        self.buy_signals = []  # 買いシグナルを記録するリスト
+        self.sell_signals = []  # 売りシグナルを記録するリスト
 
     def next(self):
         if self.rsi[-1] < self.rsi_buy:
             self.buy()
+            self.buy_signals.append(self.data.index[-1])  # 買いシグナルの日時を記録
         elif self.rsi[-1] > self.rsi_sell:
             self.position.close()
+            self.sell_signals.append(self.data.index[-1])  # 売りシグナルの日時を記録
 
 
 
@@ -457,14 +475,18 @@ class MaDeviationStrategy(Strategy):
 
     def init(self):
         self.ma = self.I(SMA, self.data["Close"], self.ma_period)
+        self.buy_signals = []  # 買いシグナルを記録するリスト
+        self.sell_signals = []  # 売りシグナルを記録するリスト
 
     def next(self):
         deviation = (self.data.Close[-1] - self.ma[-1]) / self.ma[-1] * 100
 
         if deviation < -self.deviation_threshold:
             self.buy()
+            self.buy_signals.append(self.data.index[-1])  # 買いシグナルの日時を記録
         elif deviation > self.deviation_threshold:
             self.position.close()
+            self.sell_signals.append(self.data.index[-1])  # 売りシグナルの日時を記録
 
 
 
@@ -486,12 +508,16 @@ class AtrTrailingStopStrategy(Strategy):
     def init(self):
         self.ma = self.I(SMA, self.data["Close"], self.ma_period)
         self.atr = self.I(ATR, self.data, self.atr_period)
+        self.buy_signals = []  # 買いシグナルを記録するリスト
+        self.sell_signals = []  # 売りシグナルを記録するリスト
 
     def next(self):
         if self.data.Close[-1] > self.ma[-1]:
             self.buy(sl=self.data.Close[-1] - self.atr_multiplier * self.atr[-1])
+            self.buy_signals.append(self.data.index[-1])  # 買いシグナルの日時を記録
         elif self.data.Close[-1] < self.ma[-1]:
             self.position.close()
+            self.sell_signals.append(self.data.index[-1])  # 売りシグナルの日時を記録
 
 
 # RSIシグナル戦略
@@ -514,6 +540,8 @@ class RSISignalStrategy(Strategy):
         初期化処理: RSIを計算
         """
         self.rsi = self.I(ta.RSI, self.data["Close"], self.rsi_period)
+        self.buy_signals = []  # 買いシグナルを記録するリスト
+        self.sell_signals = []  # 売りシグナルを記録するリスト
 
     def next(self):
         """
@@ -521,8 +549,10 @@ class RSISignalStrategy(Strategy):
         """
         if self.rsi[-1] > self.rsi_signal:
             self.buy()  # RSIがシグナル値を超えたら買い
+            self.buy_signals.append(self.data.index[-1])  # 買いシグナルの日時を記録
         elif self.rsi[-1] < self.rsi_signal:
             self.position.close()  # RSIがシグナル値を下回ったらポジションを閉じる
+            self.sell_signals.append(self.data.index[-1])  # 売りシグナルの日時を記録
 
 
 # RSI + MACD戦略
@@ -560,15 +590,19 @@ class RsiMacdStrategy(Strategy):
             slowperiod=self.macd_slow,
             signalperiod=self.macd_signal,
         )
+        self.buy_signals = []  # 買いシグナルを記録するリスト
+        self.sell_signals = []  # 売りシグナルを記録するリスト
 
     def next(self):
         # 買い条件: RSIが売られすぎ & MACDがシグナルラインを上抜け
         if self.rsi[-1] < self.rsi_buy_threshold and crossover(self.macd, self.macd_signal):
             self.buy()
+            self.buy_signals.append(self.data.index[-1])  # 買いシグナルの日時を記録
 
         # 売り条件: RSIが買われすぎ & MACDがシグナルラインを下抜け
         elif self.rsi[-1] > self.rsi_sell_threshold and crossover(self.macd_signal, self.macd):
             self.position.close()
+            self.sell_signals.append(self.data.index[-1])  # 売りシグナルの日時を記録
 
 
 
@@ -582,19 +616,19 @@ if __name__ == '__main__':
     ##########################################
 
     # 調べたい銘柄を定義
-    tickers = ["7011.T"]
-    # tickers = [
-    # "7012.T", "7011.T", "6146.T", "6857.T", "7203.T", "8306.T", "5803.T", "2432.T", "8316.T", "8035.T",
-    # "6758.T", "9983.T", "7013.T", "9984.T", "8411.T", "6501.T", "6098.T", "7974.T", "8136.T", "6861.T",
-    # "6920.T", "9104.T", "7267.T", "4676.T", "8058.T", "8725.T", "8766.T", "4063.T", "9101.T", "9432.T",
-    # "285A.T", "7182.T", "8001.T", "4502.T", "9749.T", "8031.T", "2914.T", "7741.T", "7936.T", "6702.T",
-    # "6981.T", "5016.T", "6503.T", "6752.T", "6902.T", "6273.T", "9433.T", "9434.T", "6723.T", "4568.T",
-    # "6954.T", "4755.T", "8630.T", "5401.T", "4751.T", "6367.T", "6532.T", "7751.T", "4661.T", "6701.T",
-    # "8604.T", "8002.T", "7261.T", "7201.T", "4519.T", "8053.T", "6762.T", "8801.T", "9021.T", "8309.T",
-    # "1605.T", "5108.T", "4543.T", "9020.T", "7735.T", "7003.T", "9107.T", "7270.T", "7269.T", "8802.T",
-    # "8308.T", "4004.T", "9501.T", "5411.T", "6301.T", "6201.T", "7832.T", "5801.T", "8591.T", "4503.T",
-    # "6526.T", "5406.T", "4901.T", "4578.T", "8750.T", "5838.T", "6594.T", "2502.T", "5802.T", "^N225"
-    # ]
+    # tickers = ["7011.T"]
+    tickers = [
+    "7012.T", "7011.T", "6146.T", "6857.T", "7203.T", "8306.T", "5803.T", "2432.T", "8316.T", "8035.T",
+    "6758.T", "9983.T", "7013.T", "9984.T", "8411.T", "6501.T", "6098.T", "7974.T", "8136.T", "6861.T",
+    "6920.T", "9104.T", "7267.T", "4676.T", "8058.T", "8725.T", "8766.T", "4063.T", "9101.T", "9432.T",
+    "285A.T", "7182.T", "8001.T", "4502.T", "9749.T", "8031.T", "2914.T", "7741.T", "7936.T", "6702.T",
+    "6981.T", "5016.T", "6503.T", "6752.T", "6902.T", "6273.T", "9433.T", "9434.T", "6723.T", "4568.T",
+    "6954.T", "4755.T", "8630.T", "5401.T", "4751.T", "6367.T", "6532.T", "7751.T", "4661.T", "6701.T",
+    "8604.T", "8002.T", "7261.T", "7201.T", "4519.T", "8053.T", "6762.T", "8801.T", "9021.T", "8309.T",
+    "1605.T", "5108.T", "4543.T", "9020.T", "7735.T", "7003.T", "9107.T", "7270.T", "7269.T", "8802.T",
+    "8308.T", "4004.T", "9501.T", "5411.T", "6301.T", "6201.T", "7832.T", "5801.T", "8591.T", "4503.T",
+    "6526.T", "5406.T", "4901.T", "4578.T", "8750.T", "5838.T", "6594.T", "2502.T", "5802.T", "^N225"
+    ]
 
     best_bt = None  # 最も利益が良かったバックテストオブジェクト
     best_result = None  # 最適化結果を記録する変数
@@ -603,13 +637,15 @@ if __name__ == '__main__':
 
     # 買いシグナルが出た銘柄を格納するリスト
     buy_signal_tickers = []
+    # 売りシグナルが出た銘柄を格納するリスト
+    sell_signal_tickers = []
 
     for ticker in tickers:
         df = get_stock_data(ticker, drop_na=True)
         recent_data = filter_stock_data_by_period(df, days_ago=0, lookback_days=9999)
 
         # バックテストを実行
-        bt, result, best_params, has_recent_buy_signal = run_optimized_backtest(recent_data, SmaCross)
+        bt, result, best_params, has_recent_buy_signal, has_recent_sell_signal = run_optimized_backtest(recent_data, SmaCross)
 
         print("最適化結果:")
         print(result)
@@ -632,6 +668,10 @@ if __name__ == '__main__':
         if has_recent_buy_signal:
             buy_signal_tickers.append(ticker)
 
+        # 直近2日に売りシグナルがある場合、リストに追加
+        if has_recent_sell_signal:
+            sell_signal_tickers.append(ticker)
+
     # 買いシグナルが出た銘柄を表示
     if buy_signal_tickers:
         print("\n直近2日間で買いシグナルが出た銘柄:")
@@ -639,6 +679,14 @@ if __name__ == '__main__':
             print(f"- {ticker}")
     else:
         print("\n直近2日間で買いシグナルが出た銘柄はありません。")
+
+    # 売りシグナルが出た銘柄を表示
+    if sell_signal_tickers:
+        print("\n直近2日間で売りシグナルが出た銘柄:")
+        for ticker in sell_signal_tickers:
+            print(f"- {ticker}")
+    else:
+        print("\n直近2日間で売りシグナルが出た銘柄はありません。")
 
     print(best_result)
     best_bt.plot(filename="backtest_result.html")
