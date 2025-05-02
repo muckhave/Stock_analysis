@@ -206,6 +206,9 @@ def run_optimized_backtest(df, strategy_class, maximize_metric='Return [%]', con
     # 戦略インスタンスを取得
     strategy_instance = final_result._strategy  # 修正: 正しいインスタンスを取得
 
+    # 戦略名を取得
+    strategy_name = type(strategy_instance).__name__
+
     # 直近2日に買いシグナルがあるかを判定
     if len(df) >= 2:
         recent_buy_signals = [
@@ -225,8 +228,7 @@ def run_optimized_backtest(df, strategy_class, maximize_metric='Return [%]', con
 
     print(strategy_instance)  # 戦略インスタンスが正しく取得されているか確認
 
-    return bt, final_result, best_params, has_recent_buy_signal, has_recent_sell_signal
-
+    return bt, final_result, best_params, has_recent_buy_signal, has_recent_sell_signal, strategy_name
 
 
 def filter_stock_data_by_period(df, start_date=None, end_date=None, last_n_days=None, days_ago=None, lookback_days=None):
@@ -608,83 +610,56 @@ class RsiMacdStrategy(Strategy):
 
 ######################################## main.py ########################################
 
-if __name__ == '__main__':
+import statistics
+from typing import List, Tuple, Dict
 
-    ############### 以下メモ用 ################
-    # get_stock_data(ticker)で株価データフレームを返す
-    # get_stock_minute_data(ticker)で分足の株価データフレームを返す
-    ##########################################
 
-    # 調べたい銘柄を定義
-    tickers = ["7011.T","6146.T", "6857.T"]
-    # tickers = [
-    # "7012.T", "7011.T", "6146.T", "6857.T", "7203.T", "8306.T", "5803.T", "2432.T", "8316.T", "8035.T",
-    # "6758.T", "9983.T", "7013.T", "9984.T", "8411.T", "6501.T", "6098.T", "7974.T", "8136.T", "6861.T",
-    # "6920.T", "9104.T", "7267.T", "4676.T", "8058.T", "8725.T", "8766.T", "4063.T", "9101.T", "9432.T",
-    # "285A.T", "7182.T", "8001.T", "4502.T", "9749.T", "8031.T", "2914.T", "7741.T", "7936.T", "6702.T",
-    # "6981.T", "5016.T", "6503.T", "6752.T", "6902.T", "6273.T", "9433.T", "9434.T", "6723.T", "4568.T",
-    # "6954.T", "4755.T", "8630.T", "5401.T", "4751.T", "6367.T", "6532.T", "7751.T", "4661.T", "6701.T",
-    # "8604.T", "8002.T", "7261.T", "7201.T", "4519.T", "8053.T", "6762.T", "8801.T", "9021.T", "8309.T",
-    # "1605.T", "5108.T", "4543.T", "9020.T", "7735.T", "7003.T", "9107.T", "7270.T", "7269.T", "8802.T",
-    # "8308.T", "4004.T", "9501.T", "5411.T", "6301.T", "6201.T", "7832.T", "5801.T", "8591.T", "4503.T",
-    # "6526.T", "5406.T", "4901.T", "4578.T", "8750.T", "5838.T", "6594.T", "2502.T", "5802.T", "^N225"
-    # ]
+def run_backtest_for_ticker(ticker: str, strategy_class) -> Tuple[Backtest, float, int, str, bool, bool, Dict]:
+    """
+    指定した銘柄でバックテストを実行し、結果を返す。
 
-    best_bt = None  # 最も利益が良かったバックテストオブジェクト
-    best_result = None  # 最適化結果を記録する変数
-    max_return = float('-inf')  # 最大リターンを記録する変数
-    best_params_all = []  # 全ての最適化パラメータを記録するリスト
+    Args:
+        ticker (str): 銘柄コード
+        strategy_class: 使用する戦略クラス
 
-    # 買いシグナルが出た銘柄を格納するリスト
-    buy_signal_tickers = []
-    # 売りシグナルが出た銘柄を格納するリスト
-    sell_signal_tickers = []
+    Returns:
+        Tuple[Backtest, float, int, str, bool, bool, Dict]: 
+            Backtestオブジェクト、リターン、取引回数、戦略名、買いシグナルフラグ、売りシグナルフラグ、バックテスト結果
+    """
+    df = get_stock_data(ticker, drop_na=True)
+    recent_data = filter_stock_data_by_period(df, days_ago=0, lookback_days=9999)
 
-    import statistics
+    # バックテストを実行
+    bt, result, best_params, has_recent_buy_signal, has_recent_sell_signal, strategy_name = run_optimized_backtest(
+        recent_data, strategy_class
+    )
 
-    # 平均リターンと平均取引回数を計算するためのリスト
-    returns = []
-    trade_counts = []
+    return bt, result['Return [%]'], result['# Trades'], strategy_name, has_recent_buy_signal, has_recent_sell_signal, result
 
-    for ticker in tickers:
-        df = get_stock_data(ticker, drop_na=True)
-        recent_data = filter_stock_data_by_period(df, days_ago=0, lookback_days=9999)
 
-        # バックテストを実行
-        bt, result, best_params, has_recent_buy_signal, has_recent_sell_signal = run_optimized_backtest(recent_data, SmaCross)
+def display_results(
+    returns: List[float],
+    trade_counts: List[int],
+    buy_signal_tickers: List[str],
+    sell_signal_tickers: List[str],
+    strategy_name: str,
+    best_ticker: str,
+    best_return: float,
+    best_result: Dict,
+):
+    """
+    バックテスト結果を表示する。
 
-        print("最適化結果:")
-        print(result)
-        return_percentage = result['Return [%]']
-        trade_count = result['# Trades']
-
-        # 結果をリストに追加
-        returns.append(return_percentage)
-        trade_counts.append(trade_count)
-
-        print(f"リターン: {return_percentage}%")
-        print(f"取引回数: {trade_count}")
-        print(f"ベストなパラメータ：{best_params}")
-
-        # 最大リターンを更新し、最も利益が良かったbtを記録
-        if return_percentage > max_return:
-            max_return = return_percentage
-            best_bt = bt
-            best_result = result
-            best_params_all = best_params
-
-        # バックテスト結果を保存
-        ticker_name = get_stock_name(ticker)
-        save_backtest_results(result, best_params, ticker, ticker_name, "daily")
-
-        # 直近2日に買いシグナルがある場合、リストに追加
-        if has_recent_buy_signal:
-            buy_signal_tickers.append(ticker)
-
-        # 直近2日に売りシグナルがある場合、リストに追加
-        if has_recent_sell_signal:
-            sell_signal_tickers.append(ticker)
-
+    Args:
+        returns (List[float]): 各銘柄のリターン
+        trade_counts (List[int]): 各銘柄の取引回数
+        buy_signal_tickers (List[str]): 買いシグナルが出た銘柄
+        sell_signal_tickers (List[str]): 売りシグナルが出た銘柄
+        strategy_name (str): 使用した戦略名
+        best_ticker (str): 最も利益が出た銘柄
+        best_return (float): 最も利益が出た銘柄のリターン
+        best_result (Dict): 最も利益が出た銘柄のバックテスト結果
+    """
     # 平均リターンと平均取引回数を計算
     average_return = sum(returns) / len(returns) if returns else 0
     average_trade_count = sum(trade_counts) / len(trade_counts) if trade_counts else 0
@@ -694,6 +669,7 @@ if __name__ == '__main__':
 
     # 結果を表示
     print("\n複数銘柄バックテストの結果:")
+    print(f"使用した戦略: {strategy_name}")
     print(f"平均リターン: {average_return:.2f}%")
     print(f"リターンの標準偏差: {return_std_dev:.2f}%")
     print(f"平均取引回数: {average_trade_count:.2f}")
@@ -714,8 +690,72 @@ if __name__ == '__main__':
     else:
         print("\n直近2日間で売りシグナルが出た銘柄はありません。")
 
-    print(best_result)
-    best_bt.plot(filename="backtest_result.html")
+    # 最も利益が出た銘柄を表示
+    print("\n最も利益が出た銘柄:")
+    print(f"銘柄: {best_ticker}")
+    print(f"リターン: {best_return:.2f}%")
+    print(f"バックテスト結果: {best_result}")
+
+
+def main():
+    """
+    メイン処理を実行する。
+    """
+    # 銘柄リストを定義
+    tickers = ["7011.T", "6146.T", "6857.T"]
+
+    # 使用する戦略クラス
+    strategy_class = SmaCross
+
+    # 結果を格納するリスト
+    returns = []
+    trade_counts = []
+    buy_signal_tickers = []
+    sell_signal_tickers = []
+
+    # 最も利益が出た銘柄の情報を記録
+    best_ticker = None
+    best_return = float('-inf')
+    best_result = None
+    best_bt = None  # 最も利益が出たバックテストオブジェクト
+
+    for ticker in tickers:
+        bt, return_percentage, trade_count, strategy_name, has_recent_buy_signal, has_recent_sell_signal, result = run_backtest_for_ticker(
+            ticker, strategy_class
+        )
+
+        # 結果をリストに追加
+        returns.append(return_percentage)
+        trade_counts.append(trade_count)
+
+        # シグナルが出た銘柄をリストに追加
+        if has_recent_buy_signal:
+            buy_signal_tickers.append(ticker)
+        if has_recent_sell_signal:
+            sell_signal_tickers.append(ticker)
+
+        # 最も利益が出た銘柄を更新
+        if return_percentage > best_return:
+            best_ticker = ticker
+            best_return = return_percentage
+            best_result = result
+            best_bt = bt  # 最も利益が出たバックテストオブジェクトを記録
+
+    # 結果を表示
+    display_results(
+        returns, trade_counts, buy_signal_tickers, sell_signal_tickers, strategy_name, best_ticker, best_return, best_result
+    )
+
+    # 最も利益が出たバックテスト結果をプロット
+    if best_bt:  # Backtest オブジェクトが存在するか確認
+        best_bt.plot(filename="backtest_result.html")
+        print("\n最も利益が出たバックテスト結果を 'backtest_result.html' に保存しました！")
+    else:
+        print("\n最も利益が出たバックテスト結果をプロットできませんでした。")
+
+
+if __name__ == "__main__":
+    main()
 
 
 
