@@ -582,13 +582,12 @@ class RSISignalStrategy(Strategy):
 
 # RSI + MACD戦略
 class RSIMACDStrategy(Strategy):
-    # うまくいかない
-    rsi_period = 14  # RSIの計算期間
-    rsi_buy_threshold = 30
-    rsi_sell_threshold = 70
-    macd_fast = 12
-    macd_slow = 26
-    macd_signal = 9
+    rsi_period = 14
+    rsi_buy_threshold = 40  # デフォルト30から緩和
+    rsi_sell_threshold = 60  # デフォルト70から緩和
+    macd_fast = 6  # デフォルト12から短縮
+    macd_slow = 13  # デフォルト26から短縮
+    macd_signal = 5  # デフォルト9から短縮
 
     @classmethod
     def get_optimize_params(cls):

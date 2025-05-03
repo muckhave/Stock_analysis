@@ -498,6 +498,23 @@ class MaDeviationStrategy(Strategy):
 
 
 #  移動平均 + ATRトレーリングストップ
+
+def ATR(data, period):
+    """
+    ATR (Average True Range) を計算する関数。
+
+    Args:
+        data (pd.DataFrame): 株価データフレーム（"High", "Low", "Close" 列を含む必要があります）
+        period (int): ATR を計算する期間
+
+    Returns:
+        pd.Series: ATR の値
+    """
+    high = data["High"]
+    low = data["Low"]
+    close = data["Close"]
+    return ta.ATR(high, low, close, timeperiod=period)
+
 class AtrTrailingStopStrategy(Strategy):
     ma_period = 50
     atr_period = 14
@@ -524,6 +541,7 @@ class AtrTrailingStopStrategy(Strategy):
         elif self.data.Close[-1] < self.ma[-1]:
             self.position.close()
             self.sell_signals.append(self.data.index[-1])  # 売りシグナルの日時を記録
+
 
 
 # RSIシグナル戦略
@@ -564,13 +582,12 @@ class RSISignalStrategy(Strategy):
 
 # RSI + MACD戦略
 class RSIMACDStrategy(Strategy):
-    # うまくいかない
-    rsi_period = 14  # RSIの計算期間
-    rsi_buy_threshold = 30
-    rsi_sell_threshold = 70
-    macd_fast = 12
-    macd_slow = 26
-    macd_signal = 9
+    rsi_period = 14
+    rsi_buy_threshold = 40  # デフォルト30から緩和
+    rsi_sell_threshold = 60  # デフォルト70から緩和
+    macd_fast = 6  # デフォルト12から短縮
+    macd_slow = 13  # デフォルト26から短縮
+    macd_signal = 5  # デフォルト9から短縮
 
     @classmethod
     def get_optimize_params(cls):
@@ -611,23 +628,6 @@ class RSIMACDStrategy(Strategy):
         elif self.rsi[-1] > self.rsi_sell_threshold and crossover(self.macd_signal, self.macd):
             self.position.close()
             self.sell_signals.append(self.data.index[-1])  # 売りシグナルの日時を記録
-
-
-def ATR(data, period):
-    """
-    ATR (Average True Range) を計算する関数。
-
-    Args:
-        data (pd.DataFrame): 株価データフレーム（"High", "Low", "Close" 列を含む必要があります）
-        period (int): ATR を計算する期間
-
-    Returns:
-        pd.Series: ATR の値
-    """
-    high = data["High"]
-    low = data["Low"]
-    close = data["Close"]
-    return ta.ATR(high, low, close, timeperiod=period)
 
 
 ######################################## main.py ########################################
@@ -718,27 +718,6 @@ def display_results(
     print(f"リターン: {best_return:.2f}%")
     print(f"バックテスト結果: {best_result}")
 
-def run_backtest_without_optimization(ticker: str, strategy_class):
-    """
-    最適化なしでバックテストを実行する。
-
-    Args:
-        ticker (str): 銘柄コード
-        strategy_class: 使用する戦略クラス
-
-    Returns:
-        Tuple[Backtest, dict]: Backtestオブジェクトとバックテスト結果
-    """
-    # データを取得
-    df = get_stock_data(ticker, drop_na=True)
-
-    # バックテストを実行
-    bt = Backtest(df, strategy_class, trade_on_close=True, cash=100000)
-    result = bt.run()
-
-    return bt, result
-
-
 
 def main():
     """
@@ -772,28 +751,56 @@ def main():
     # 以下うまくいかない
     strategy_class = RSIMACDStrategy
 
-  # 結果を格納するリスト
+    # 結果を格納するリスト
     returns = []
     trade_counts = []
+    buy_signal_tickers = []
+    sell_signal_tickers = []
+
+    # 最も利益が出た銘柄の情報を記録
+    best_ticker = None
+    best_return = float('-inf')
+    best_result = None
+    best_bt = None  # 最も利益が出たバックテストオブジェクト
 
     for ticker in tickers:
-        # 最適化なしでバックテストを実行
-        bt, result = run_backtest_without_optimization(ticker, strategy_class)
+        bt, return_percentage, trade_count, strategy_name, has_recent_buy_signal, has_recent_sell_signal, result = run_backtest_for_ticker(
+            ticker, strategy_class
+        )
 
         # 結果をリストに追加
-        returns.append(result['Return [%]'])
-        trade_counts.append(result['# Trades'])
+        returns.append(return_percentage)
+        trade_counts.append(trade_count)
 
-        # 結果を表示
-        print(f"\n銘柄: {ticker}")
-        print(f"リターン: {result['Return [%]']:.2f}%")
-        print(f"取引回数: {result['# Trades']}")
-        print(f"バックテスト結果: {result}")
+        # シグナルが出た銘柄をリストに追加
+        if has_recent_buy_signal:
+            buy_signal_tickers.append(ticker)
+        if has_recent_sell_signal:
+            sell_signal_tickers.append(ticker)
 
-        # バックテスト結果をプロット
-        bt.plot(filename=f"{ticker}_backtest_result.html")
-        print(f"\nバックテスト結果を '{ticker}_backtest_result.html' に保存しました！")
+        # 最も利益が出た銘柄を更新
+        if return_percentage > best_return:
+            best_ticker = ticker
+            best_return = return_percentage
+            best_result = result
+            best_bt = bt  # 最も利益が出たバックテストオブジェクトを記録
+
+    # 結果を表示
+    display_results(
+        returns, trade_counts, buy_signal_tickers, sell_signal_tickers, strategy_name, best_ticker, best_return, best_result
+    )
+
+    # 最も利益が出たバックテスト結果をプロット
+    if best_bt:  # Backtest オブジェクトが存在するか確認
+        best_bt.plot(filename="backtest_result.html")
+        print("\n最も利益が出たバックテスト結果を 'backtest_result.html' に保存しました！")
+    else:
+        print("\n最も利益が出たバックテスト結果をプロットできませんでした。")
 
 
 if __name__ == "__main__":
     main()
+
+
+
+
