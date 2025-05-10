@@ -9,7 +9,10 @@
     <p>トレード回数: {{ result.trade_count }}</p>
 
     <h2>Equity Curve</h2>
-    <img src="data:image/png;base64,{{ result.equity_curve_image }}" alt="Equity Curve">
+    <!-- グラフHTMLをそのまま埋め込む -->
+    <div>
+        {{ result.graph_html|safe }}
+    </div>
 
     <h2>バックテスト結果の詳細</h2>
     <table border="1">
@@ -23,16 +26,16 @@
             {% for key, value in result.items %}
             <tr>
                 <td>{{ key }}</td>
-                <td>
-                    {% if value is iterable and not value|default_if_none:'' %}
-                        {{ value|join:", " }}
-                    {% else %}
-                        {{ value }}
-                    {% endif %}
-                </td>
+                <td>{{ value }}</td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
+
+    <!-- 戻るボタン -->
+    <br>
+    <a href="{% url 'index' %}">
+        <button>入力画面に戻る</button>
+    </a>
 </body>
 </html>

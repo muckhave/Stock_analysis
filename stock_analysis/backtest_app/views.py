@@ -91,10 +91,15 @@ def index(request):
 
             print(f"HTMLファイルを保存しました: {output_file_path}")  # 保存先をデバッグ出力
 
+            # 保存されたHTMLファイルを読み取る
+            with open(output_file_path, "r", encoding="utf-8") as f:
+                graph_html = f.read()
+
             # テンプレートで参照しやすい形式に変換
             result_data = {
                 "return_percentage": result["Return [%]"],
                 "trade_count": result["# Trades"],
+                "graph_html": graph_html,  # グラフHTMLをテンプレートに渡す
             }
 
             # 結果をテンプレートに渡す
