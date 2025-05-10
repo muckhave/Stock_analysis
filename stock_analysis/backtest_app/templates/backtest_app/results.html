@@ -5,8 +5,7 @@
 </head>
 <body>
     <h1>バックテスト結果</h1>
-    <p>銘柄: {{ result.ticker }}</p>
-    <p>リターン: {{ result['Return [%]'] }}%</p>
-    <p>取引回数: {{ result['# Trades'] }}</p>
+    <p>リターン（%）: {{ result.return_percentage }}</p>
+    <p>トレード回数: {{ result.trade_count }}</p>
 </body>
 </html>

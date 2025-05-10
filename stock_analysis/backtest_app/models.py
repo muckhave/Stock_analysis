@@ -5,7 +5,7 @@ class BacktestResult(models.Model):
     strategy_name = models.CharField(max_length=50)
     return_percentage = models.FloatField()
     trade_count = models.IntegerField()
-    best_params = models.JSONField()
+    best_params = models.JSONField()  # JSONField を使用
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
