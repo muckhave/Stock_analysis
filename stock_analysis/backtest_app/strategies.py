@@ -1,5 +1,8 @@
 from backtesting import Strategy
 from backtesting.lib import Strategy
+from backtesting.lib import crossover
+from backtesting import Backtest
+from backtesting.test import SMA
 import pandas as pd
 import numpy as np
 import pandas_ta as ta
@@ -35,20 +38,29 @@ class RSIMACDStrategy(Strategy):
             self.position.close()
 
 class SmaCross(Strategy):
-    short_window = 10
-    long_window = 20
+    ns = 5
+    nl = 25
+
+    @classmethod
+    def get_optimize_params(cls):
+        return {
+            "ns": range(5, 25, 5),
+            "nl": range(5, 75, 5),
+        }
 
     def init(self):
-        close = self.data.Close  # 終値を取得
-        close = close[~np.isnan(close)]  # 欠損値を削除
-        self.short_sma = self.I(sma, close, self.short_window)
-        self.long_sma = self.I(sma, close, self.long_window)
+        self.smaS = self.I(SMA, self.data["Close"], self.ns)
+        self.smaL = self.I(SMA, self.data["Close"], self.nl)
+        self.buy_signals = []  # 買いシグナルを記録するリスト
+        self.sell_signals = []  # 売りシグナルを記録するリスト
 
     def next(self):
-        if self.short_sma[-1] > self.long_sma[-1]:
+        if crossover(self.smaS, self.smaL):
             self.buy()
-        elif self.short_sma[-1] < self.long_sma[-1]:
-            self.sell()
+            self.buy_signals.append(self.data.index[-1])  # 買いシグナルの日時を記録
+        elif crossover(self.smaL, self.smaS):
+            self.position.close()
+            self.sell_signals.append(self.data.index[-1])  # 売りシグナルの日時を記録
 
 class BollingerBandStrategy(Strategy):
     window = 20

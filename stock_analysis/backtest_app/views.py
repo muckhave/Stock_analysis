@@ -8,6 +8,14 @@ import talib
 import numpy as np
 import pandas as pd
 import json
+import matplotlib.pyplot as plt
+import io
+import base64
+import matplotlib
+import os  # ファイルパス操作のために必要
+import mpld3  # mpld3をインポート
+from bokeh.plotting import output_file, save  # Bokehの関数をインポート
+matplotlib.use("Agg")  # GUIバックエンドを無効化
 
 def rsi(data, period=14):
     """
@@ -38,8 +46,19 @@ df = pd.DataFrame({
     'Volume': [1000, 1100, 1200]
 })
 
+# データフレームの内容を出力
 print("データフレームの内容:", df.head())
-print("RSIの計算結果:", rsi(df))
+
+# RSIの計算結果を出力
+rsi_values = rsi(df)
+print(f"RSIの計算結果: {rsi_values}")
+
+# MACDの計算結果を出力（型を明示的に変換）
+close_prices = df['Close'].dropna().astype(np.float64).values
+macd, macd_signal, macd_hist = talib.MACD(close_prices, fastperiod=12, slowperiod=26, signalperiod=9)
+print(f"MACD: {macd}")
+print(f"MACDシグナル: {macd_signal}")
+print(f"MACDヒストグラム: {macd_hist}")
 
 def index(request):
     if request.method == "POST":
@@ -57,14 +76,25 @@ def index(request):
 
             # データ取得とバックテスト実行
             df = get_stock_data(ticker)
-            bt = Backtest(df, strategy_class, cash=100000, trade_on_close=True)
+            bt = Backtest(df, strategy_class, cash=1000000, trade_on_close=True)
             result = bt.run()
+
+            # HTMLグラフを生成
+            grid_plot = bt.plot(open_browser=False)  # GridPlotオブジェクトを取得
+
+            # HTMLファイルとして保存
+            output_dir = os.path.join("data", "backtest_graph")
+            os.makedirs(output_dir, exist_ok=True)  # ディレクトリが存在しない場合は作成
+            output_file_path = os.path.join(output_dir, f"{ticker}_{strategy_name}_backtest.html")
+            output_file(output_file_path)  # Bokehの出力先を設定
+            save(grid_plot)  # GridPlotをHTMLファイルとして保存
+
+            print(f"HTMLファイルを保存しました: {output_file_path}")  # 保存先をデバッグ出力
 
             # テンプレートで参照しやすい形式に変換
             result_data = {
                 "return_percentage": result["Return [%]"],
                 "trade_count": result["# Trades"],
-                "equity_curve": result["_equity_curve"].to_dict(),  # 必要に応じて加工
             }
 
             # 結果をテンプレートに渡す

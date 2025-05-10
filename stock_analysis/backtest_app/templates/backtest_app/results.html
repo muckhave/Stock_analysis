@@ -7,5 +7,32 @@
     <h1>バックテスト結果</h1>
     <p>リターン（%）: {{ result.return_percentage }}</p>
     <p>トレード回数: {{ result.trade_count }}</p>
+
+    <h2>Equity Curve</h2>
+    <img src="data:image/png;base64,{{ result.equity_curve_image }}" alt="Equity Curve">
+
+    <h2>バックテスト結果の詳細</h2>
+    <table border="1">
+        <thead>
+            <tr>
+                <th>キー</th>
+                <th>値</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for key, value in result.items %}
+            <tr>
+                <td>{{ key }}</td>
+                <td>
+                    {% if value is iterable and not value|default_if_none:'' %}
+                        {{ value|join:", " }}
+                    {% else %}
+                        {{ value }}
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
 </body>
 </html>
