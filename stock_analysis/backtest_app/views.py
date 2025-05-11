@@ -2,8 +2,18 @@ from django.shortcuts import render
 from .forms import BacktestForm
 from .models import BacktestResult
 from backtesting import Backtest
-from .strategies import RSIMACDStrategy, SmaCross, BollingerBandStrategy
-from .utils import get_stock_data
+from .strategies import (
+    SmaCross,
+    RSICross,
+    MACDCross,
+    BollingerBandStrategy,
+    RsiStrategy,
+    MaDeviationStrategy,
+    AtrTrailingStopStrategy,
+    RSISignalStrategy,
+    RSIMACDStrategy,
+)
+from .utils import get_stock_data, get_stock_minute_data, filter_stock_data_by_period
 import talib
 import numpy as np
 import pandas as pd
@@ -61,51 +71,76 @@ print(f"MACDシグナル: {macd_signal}")
 print(f"MACDヒストグラム: {macd_hist}")
 
 def index(request):
+    result_data = None
+    graph_html = None
+
     if request.method == "POST":
         form = BacktestForm(request.POST)
         if form.is_valid():
             ticker = form.cleaned_data["ticker"]
             strategy_name = form.cleaned_data["strategy"]
+            interval = form.cleaned_data["interval"]  # インターバルを取得
 
-            # 戦略クラスを選択
+            # 計測期間の取得
+            start_date = form.cleaned_data.get("start_date")
+            end_date = form.cleaned_data.get("end_date")
+            last_n_days = form.cleaned_data.get("last_n_days")
+            days_ago = form.cleaned_data.get("days_ago")
+            lookback_days = form.cleaned_data.get("lookback_days")
+
+            # データ取得
+            if interval == "daily":
+                df = get_stock_data(ticker)
+            elif interval == "minute":
+                df = get_stock_minute_data(ticker)
+
+            # 計測期間でデータをフィルタリング
+            filtered_df = filter_stock_data_by_period(
+                df,
+                start_date=start_date,
+                end_date=end_date,
+                last_n_days=last_n_days,
+                days_ago=days_ago,
+                lookback_days=lookback_days,
+            )
+
+            # バックテストの実行
             strategy_class = {
-                "RSIMACDStrategy": RSIMACDStrategy,
                 "SmaCross": SmaCross,
+                "RSICross": RSICross,
+                "MACDCross": MACDCross,
                 "BollingerBandStrategy": BollingerBandStrategy,
+                "RsiStrategy": RsiStrategy,
+                "MaDeviationStrategy": MaDeviationStrategy,
+                "AtrTrailingStopStrategy": AtrTrailingStopStrategy,
+                "RSISignalStrategy": RSISignalStrategy,
+                "RSIMACDStrategy": RSIMACDStrategy,
             }[strategy_name]
 
-            # データ取得とバックテスト実行
-            df = get_stock_data(ticker)
-            bt = Backtest(df, strategy_class, cash=1000000, trade_on_close=True)
+            bt = Backtest(filtered_df, strategy_class, cash=1000000, trade_on_close=True)
             result = bt.run()
 
-            # HTMLグラフを生成
-            grid_plot = bt.plot(open_browser=False)  # GridPlotオブジェクトを取得
-
-            # HTMLファイルとして保存
+            # グラフ生成
+            grid_plot = bt.plot(open_browser=False)
             output_dir = os.path.join("data", "backtest_graph")
-            os.makedirs(output_dir, exist_ok=True)  # ディレクトリが存在しない場合は作成
+            os.makedirs(output_dir, exist_ok=True)
             output_file_path = os.path.join(output_dir, f"{ticker}_{strategy_name}_backtest.html")
-            output_file(output_file_path)  # Bokehの出力先を設定
-            save(grid_plot)  # GridPlotをHTMLファイルとして保存
+            output_file(output_file_path)
+            save(grid_plot)
 
-            print(f"HTMLファイルを保存しました: {output_file_path}")  # 保存先をデバッグ出力
-
-            # 保存されたHTMLファイルを読み取る
             with open(output_file_path, "r", encoding="utf-8") as f:
                 graph_html = f.read()
 
-            # テンプレートで参照しやすい形式に変換
             result_data = {
                 "return_percentage": result["Return [%]"],
                 "trade_count": result["# Trades"],
-                "graph_html": graph_html,  # グラフHTMLをテンプレートに渡す
             }
-
-            # 結果をテンプレートに渡す
-            return render(request, "backtest_app/results.html", {"result": result_data})
 
     else:
         form = BacktestForm()
 
-    return render(request, "backtest_app/index.html", {"form": form})
+    return render(request, "backtest_app/index.html", {
+        "form": form,
+        "result_data": result_data,
+        "graph_html": graph_html,
+    })

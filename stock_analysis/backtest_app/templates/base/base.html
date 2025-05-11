@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>バックテスト</title>
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'backtests/css/base.css' %}">
+    <script src="{% static 'backtests/js/base.js' %}"></script>
+</head>
+
+<body>
+    <div class="wrapper">
+    {% block body %}
+    {% endblock %}
+    </div>
+</body>
+
+</html>

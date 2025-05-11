@@ -1,14 +1,21 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>バックテスト</title>
-</head>
-<body>
-    <h1>バックテストを実行</h1>
-    <form method="post">
-        {% csrf_token %}
-        {{ form.as_p }}
-        <button type="submit">実行</button>
-    </form>
-</body>
-</html>
+{% extends 'base/base.html' %}
+{% block body %}
+<h1>バックテストを実行</h1>
+
+<form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit">実行</button>
+</form>
+
+{% if result_data %}
+    <h2>バックテスト結果</h2>
+    <p>リターン（%）: {{ result_data.return_percentage }}</p>
+    <p>トレード回数: {{ result_data.trade_count }}</p>
+
+    <h2>Equity Curve</h2>
+    <div>
+        {{ graph_html|safe }}
+    </div>
+{% endif %}
+{% endblock %}
