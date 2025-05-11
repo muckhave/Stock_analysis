@@ -8,6 +8,37 @@
     <button type="submit">実行</button>
 </form>
 
+<form id="update-stock-data-form" method="POST" action="{% url 'update_stock_data' %}">
+    {% csrf_token %}
+    <button type="button" id="update-stock-data-button">最新データに更新</button>
+</form>
+
+<script>
+    document.getElementById("update-stock-data-button").addEventListener("click", function () {
+        const form = document.getElementById("update-stock-data-form");
+        const formData = new FormData(form);
+
+        fetch(form.action, {
+            method: "POST",
+            headers: {
+                "X-CSRFToken": formData.get("csrfmiddlewaretoken"),
+            },
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === "success") {
+                alert(data.message);
+            } else {
+                alert("エラー: " + data.message);
+            }
+        })
+        .catch(error => {
+            console.error("エラー:", error);
+            alert("データ更新中にエラーが発生しました。");
+        });
+    });
+</script>
+
 {% if result_data %}
     <h2>バックテスト結果</h2>
     <p>リターン（%）: {{ result_data.return_percentage }}</p>
