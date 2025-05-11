@@ -5,8 +5,8 @@ from backtesting import Backtest
 from backtesting.test import SMA
 import pandas as pd
 import numpy as np
-import pandas_ta as ta
-import talib
+# import pandas_ta as ta
+import talib as ta
 
 class SmaCross(Strategy):
     ns = 5
@@ -34,10 +34,10 @@ class SmaCross(Strategy):
             self.sell_signals.append(self.data.index[-1])  # 売りシグナルの日時を記録
 
 
-def RSI(close,n1,n2):
-    rsiS = ta.RSI(close,timeperiod=n1)
-    rsiL = ta.RSI(close,timeperiod=n2)
-    return rsiS,rsiL
+def RSI(close, n1, n2):
+    rsiS = ta.RSI(close, timeperiod=n1)
+    rsiL = ta.RSI(close, timeperiod=n2)
+    return rsiS, rsiL
 
 class RSICross(Strategy):
     ns = 14
@@ -51,6 +51,9 @@ class RSICross(Strategy):
         }
 
     def init(self):
+        if self.data.Close is None or len(self.data.Close) == 0:
+            raise ValueError("データ 'Close' が空です。適切なデータを渡してください。")
+        
         self.rsiS, self.rsiL = self.I(RSI, self.data.Close, self.ns, self.nl)
         self.buy_signals = []  # 買いシグナルを記録するリスト
         self.sell_signals = []  # 売りシグナルを記録するリスト
@@ -64,10 +67,9 @@ class RSICross(Strategy):
             self.sell_signals.append(self.data.index[-1])  # 売りシグナルの日時を記録
 
 
-def MACD(close,n1,n2,n3):
-    macd,macdsignal,_= ta.MACD(close,fastperiod=n1,slowperiod=n2,signalperiod=n3)
-
-    return macd,macdsignal
+def MACD(close, n1, n2, n3):
+    macd, macdsignal, _ = ta.MACD(close, fastperiod=n1, slowperiod=n2, signalperiod=n3)
+    return macd, macdsignal
 
 class MACDCross(Strategy):
     n1 = 12

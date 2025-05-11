@@ -33,6 +33,7 @@ def rsi(data, period=14):
     """
     close_prices = data['Close'].dropna().values  # 欠損値を削除して終値を取得
     close_prices = close_prices.astype(np.float64)  # 型を明示的にfloat64に変換
+    print('rsi関数発動')
     return talib.RSI(close_prices, timeperiod=period)
 
 def filter_serializable(data):
@@ -90,9 +91,9 @@ def index(request):
 
             # データ取得
             if interval == "daily":
-                df = get_stock_data(ticker)
+                df = get_stock_data(ticker,drop_na=True)
             elif interval == "minute":
-                df = get_stock_minute_data(ticker)
+                df = get_stock_minute_data(ticker, drop_na=True)
 
             # 計測期間でデータをフィルタリング
             filtered_df = filter_stock_data_by_period(
