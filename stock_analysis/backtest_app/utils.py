@@ -1,5 +1,3 @@
-
-
 import pandas as pd
 import os
 import talib as ta
@@ -144,33 +142,55 @@ def get_stock_name(ticker, csv_path="data/stock_id.csv"):
     else:
         return None
 
-def run_optimized_backtest(df, strategy_class, maximize_metric='Return [%]', constraint=None, max_attempts=3):
+def run_optimized_backtest(df, strategy_class, maximize_metric='Return [%]', constraint=None, max_attempts=3, optimize=True):
+    """
+    バックテストを実行し、必要に応じて最適化を行う関数。
+
+    Args:
+        df (pd.DataFrame): バックテスト対象のデータフレーム
+        strategy_class (class): 使用する戦略クラス
+        maximize_metric (str): 最適化時に最大化するメトリック
+        constraint (callable, optional): 最適化時の制約条件
+        max_attempts (int): 最適化の試行回数
+        optimize (bool): Trueの場合、最適化を実行。Falseの場合、デフォルトパラメータで実行。
+
+    Returns:
+        tuple: バックテストオブジェクト、最終結果、最適化パラメータ、直近の買い/売りシグナル、戦略名
+    """
     bt = Backtest(df, strategy_class, trade_on_close=True, cash=100000)
-    optimize_params = strategy_class.get_optimize_params()
 
-    attempt = 0
-    optimized_result = None
-    while attempt < max_attempts:
-        try:
-            print(f"最適化試行 {attempt+1}/{max_attempts} を開始します...")
-            print("最適化パラメータ:", optimize_params)
-            optimized_result = bt.optimize(
-                **optimize_params,
-                maximize=maximize_metric,
-                constraint=constraint
-            )
-            break
-        except Exception as e:
-            print(f"最適化エラー (試行 {attempt+1}/{max_attempts}): {e}")
-            print("データの先頭:", df.head())
-            print("データの末尾:", df.tail())
-            print("データの行数:", len(df))
-            attempt += 1
+    if optimize:
+        optimize_params = strategy_class.get_optimize_params()
+        attempt = 0
+        optimized_result = None
 
-    if optimized_result is None:
-        raise RuntimeError("最適化に失敗しました")
+        while attempt < max_attempts:
+            try:
+                print(f"最適化試行 {attempt+1}/{max_attempts} を開始します...")
+                print("最適化パラメータ:", optimize_params)
+                optimized_result = bt.optimize(
+                    **optimize_params,
+                    maximize=maximize_metric,
+                    constraint=constraint
+                )
+                break
+            except Exception as e:
+                print(f"最適化エラー (試行 {attempt+1}/{max_attempts}): {e}")
+                print("データの先頭:", df.head())
+                print("データの末尾:", df.tail())
+                print("データの行数:", len(df))
+                attempt += 1
 
-    best_params = {key: getattr(optimized_result._strategy, key) for key in optimize_params.keys()}
+        if optimized_result is None:
+            raise RuntimeError("最適化に失敗しました")
+
+        best_params = {key: getattr(optimized_result._strategy, key) for key in optimize_params.keys()}
+    else:
+        # 最適化を行わない場合、デフォルトパラメータを使用
+        print("最適化をスキップしてデフォルトパラメータで実行します。")
+        best_params = {}
+
+    # バックテストを実行
     final_result = bt.run(**best_params)
 
     # 戦略インスタンスを取得
@@ -179,7 +199,7 @@ def run_optimized_backtest(df, strategy_class, maximize_metric='Return [%]', con
     # 戦略名を取得
     strategy_name = type(strategy_instance).__name__
 
-    # 直近2日に買いシグナルがあるかを判定
+    # 直近2日に買い/売りシグナルがあるかを判定
     if len(df) >= 2:
         recent_buy_signals = [
             signal for signal in strategy_instance.buy_signals
@@ -196,7 +216,7 @@ def run_optimized_backtest(df, strategy_class, maximize_metric='Return [%]', con
     has_recent_buy_signal = len(recent_buy_signals) > 0
     has_recent_sell_signal = len(recent_sell_signals) > 0
 
-    print("最適化が成功しました。")
+    print("バックテストが完了しました。")
     return bt, final_result, best_params, has_recent_buy_signal, has_recent_sell_signal, strategy_name
 
 

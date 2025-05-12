@@ -5,26 +5,24 @@ class BacktestForm(forms.Form):
     strategy = forms.ChoiceField(
         label="戦略",
         choices=[
-            ("SmaCross", "移動平均クロス戦略"),
-            ("RSICross", "RSIクロス戦略"),
-            ("MACDCross", "MACDクロス戦略"),
-            ("BollingerBandStrategy", "ボリンジャーバンド戦略"),
-            ("RsiStrategy", "RSIオーバーソールド戦略"),
-            ("MaDeviationStrategy", "移動平均乖離率戦略"),
-            ("AtrTrailingStopStrategy", "移動平均 + ATRトレーリングストップ戦略"),
+            ("SmaCross", "SMAクロス"),
+            ("RSICross", "RSIクロス"),
+            ("MACDCross", "MACDクロス"),
+            ("BollingerBandStrategy", "ボリンジャーバンド"),
+            ("RsiStrategy", "RSI戦略"),
+            ("MaDeviationStrategy", "移動平均乖離戦略"),
+            ("AtrTrailingStopStrategy", "ATRトレーリングストップ"),
             ("RSISignalStrategy", "RSIシグナル戦略"),
-            ("RSIMACDStrategy", "RSI + MACD戦略"),
+            ("RSIMACDStrategy", "RSI+MACD戦略"),
         ],
     )
     interval = forms.ChoiceField(
-        label="データのインターバル",
-        choices=[
-            ("daily", "日足"),
-            ("minute", "5分足"),
-        ],
+        label="インターバル",
+        choices=[("daily", "日足"), ("minute", "分足")],
     )
     start_date = forms.DateField(label="開始日", required=False, widget=forms.DateInput(attrs={"type": "date"}))
     end_date = forms.DateField(label="終了日", required=False, widget=forms.DateInput(attrs={"type": "date"}))
-    last_n_days = forms.IntegerField(label="直近の日数", required=False, min_value=1)
-    days_ago = forms.IntegerField(label="指定日数前", required=False, min_value=1)
-    lookback_days = forms.IntegerField(label="過去の日数", required=False, min_value=1)
+    last_n_days = forms.IntegerField(label="直近N日", required=False)
+    days_ago = forms.IntegerField(label="N日前から", required=False)
+    lookback_days = forms.IntegerField(label="過去N日間", required=False)
+    optimize = forms.BooleanField(label="最適化を実行", required=False, initial=True)  # 最適化の選択

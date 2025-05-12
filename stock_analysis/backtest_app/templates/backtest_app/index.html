@@ -5,6 +5,9 @@
 <form method="post">
     {% csrf_token %}
     {{ form.as_p }}
+    
+
+
     <button type="submit">実行</button>
 </form>
 
@@ -41,10 +44,19 @@
 
 {% if result_data %}
     <h2>バックテスト結果</h2>
-    <p>リターン（%）: {{ result_data.return_percentage }}</p>
-    <p>トレード回数: {{ result_data.trade_count }}</p>
+    {% if result_data.error %}
+        <p style="color: red;">エラー: {{ result_data.error }}</p>
+    {% else %}
+        <p>リターン（%）: {{ result_data.return_percentage }}</p>
+        <p>トレード回数: {{ result_data.trade_count }}</p>
+        <p>最適化されたパラメータ: {{ result_data.best_params }}</p>
+        <p>直近2日に買いシグナル: {{ result_data.recent_buy_signal }}</p>
+        <p>直近2日に売りシグナル: {{ result_data.recent_sell_signal }}</p>
+    {% endif %}
+{% endif %}
 
-    <h2>Equity Curve</h2>
+{% if graph_html %}
+    <h2>バックテスト結果グラフ</h2>
     <div>
         {{ graph_html|safe }}
     </div>

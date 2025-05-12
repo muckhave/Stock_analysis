@@ -14,7 +14,7 @@ from .strategies import (
     RSISignalStrategy,
     RSIMACDStrategy,
 )
-from .utils import get_stock_data, get_stock_minute_data, filter_stock_data_by_period, fetch_and_save_all_symbols_all_intervals
+from .utils import get_stock_data, get_stock_minute_data, filter_stock_data_by_period, fetch_and_save_all_symbols_all_intervals, run_optimized_backtest
 import talib
 import numpy as np
 import pandas as pd
@@ -81,7 +81,8 @@ def index(request):
         if form.is_valid():
             ticker = form.cleaned_data["ticker"]
             strategy_name = form.cleaned_data["strategy"]
-            interval = form.cleaned_data["interval"]  # インターバルを取得
+            interval = form.cleaned_data["interval"]
+            optimize = form.cleaned_data["optimize"]  # 最適化の選択を取得
 
             # 計測期間の取得
             start_date = form.cleaned_data.get("start_date")
@@ -92,7 +93,7 @@ def index(request):
 
             # データ取得
             if interval == "daily":
-                df = get_stock_data(ticker,drop_na=True)
+                df = get_stock_data(ticker, drop_na=True)
             elif interval == "minute":
                 df = get_stock_minute_data(ticker, drop_na=True)
 
@@ -119,26 +120,35 @@ def index(request):
                 "RSIMACDStrategy": RSIMACDStrategy,
             }[strategy_name]
 
-            bt = Backtest(filtered_df, strategy_class, cash=1000000, trade_on_close=True)
-            result = bt.run()
+            try:
+                bt, final_result, best_params, has_recent_buy_signal, has_recent_sell_signal, strategy_name = run_optimized_backtest(
+                    filtered_df, strategy_class, optimize=optimize
+                )
 
-            # グラフ生成
-            grid_plot = bt.plot(open_browser=False)
-            output_dir = os.path.join("data", "backtest_graph")
-            os.makedirs(output_dir, exist_ok=True)
+                result_data = {
+                    "return_percentage": final_result["Return [%]"],
+                    "trade_count": final_result["# Trades"],
+                    "best_params": best_params,
+                    "recent_buy_signal": has_recent_buy_signal,
+                    "recent_sell_signal": has_recent_sell_signal,
+                }
 
-            # ファイル名を統一: ticker_strategy_interval.html
-            output_file_path = os.path.join(output_dir, f"{ticker}_{strategy_name}_{interval}.html")
-            output_file(output_file_path)
-            save(grid_plot)
+                # グラフ生成
+                grid_plot = bt.plot(open_browser=False)
+                output_dir = os.path.join("data", "backtest_graph")
+                os.makedirs(output_dir, exist_ok=True)
 
-            with open(output_file_path, "r", encoding="utf-8") as f:
-                graph_html = f.read()
+                # ファイル名を生成
+                output_file_path = os.path.join(output_dir, f"{ticker}_{strategy_name}_{interval}.html")
+                output_file(output_file_path)
+                save(grid_plot)
 
-            result_data = {
-                "return_percentage": result["Return [%]"],
-                "trade_count": result["# Trades"],
-            }
+                # HTMLファイルを読み込む
+                with open(output_file_path, "r", encoding="utf-8") as f:
+                    graph_html = f.read()
+
+            except RuntimeError as e:
+                result_data = {"error": str(e)}
 
     else:
         form = BacktestForm()
