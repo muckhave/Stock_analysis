@@ -26,6 +26,8 @@ import matplotlib
 import os  # ファイルパス操作のために必要
 import mpld3  # mpld3をインポート
 from bokeh.plotting import output_file, save  # Bokehの関数をインポート
+from bokeh.embed import file_html
+from bokeh.resources import CDN
 matplotlib.use("Agg")  # GUIバックエンドを無効化
 
 def rsi(data, period=14):
@@ -75,11 +77,19 @@ print(f"MACDヒストグラム: {macd_hist}")
 def index(request):
     result_data = None
     graph_html = None
+    buy_signal_tickers = []  # 直近2日で買いシグナルが出た銘柄
+    best_ticker = None  # 最も利益が出た銘柄
+    best_return = float('-inf')  # 最大利益の初期値
+    best_graph_html = None  # 最も利益が出た銘柄のグラフHTMLを保存する変数
+
+    print("リクエストメソッド:", request.method)
 
     if request.method == "POST":
         form = BacktestForm(request.POST)
+        print("フォームのバリデーション:", form.is_valid())
         if form.is_valid():
-            ticker = form.cleaned_data["ticker"]
+            tickers = form.cleaned_data["ticker"]  # 選択された銘柄リストを取得
+            print("選択された銘柄:", tickers)
             strategy_name = form.cleaned_data["strategy"]
             interval = form.cleaned_data["interval"]
             optimize = form.cleaned_data["optimize"]  # 最適化の選択を取得
@@ -91,23 +101,6 @@ def index(request):
             days_ago = form.cleaned_data.get("days_ago")
             lookback_days = form.cleaned_data.get("lookback_days")
 
-            # データ取得
-            if interval == "daily":
-                df = get_stock_data(ticker, drop_na=True)
-            elif interval == "minute":
-                df = get_stock_minute_data(ticker, drop_na=True)
-
-            # 計測期間でデータをフィルタリング
-            filtered_df = filter_stock_data_by_period(
-                df,
-                start_date=start_date,
-                end_date=end_date,
-                last_n_days=last_n_days,
-                days_ago=days_ago,
-                lookback_days=lookback_days,
-            )
-
-            # バックテストの実行
             strategy_class = {
                 "SmaCross": SmaCross,
                 "RSICross": RSICross,
@@ -120,43 +113,68 @@ def index(request):
                 "RSIMACDStrategy": RSIMACDStrategy,
             }[strategy_name]
 
-            try:
-                bt, final_result, best_params, has_recent_buy_signal, has_recent_sell_signal, strategy_name = run_optimized_backtest(
-                    filtered_df, strategy_class, optimize=optimize
+            for ticker in tickers:
+                ticker = ticker.strip()
+                print(f"処理中の銘柄: {ticker}")
+
+                # データ取得
+                if interval == "daily":
+                    df = get_stock_data(ticker, drop_na=True)
+                elif interval == "minute":
+                    df = get_stock_minute_data(ticker, drop_na=True)
+
+                print(f"{ticker} のデータフレーム: {df.head()}")
+
+                # 計測期間でデータをフィルタリング
+                filtered_df = filter_stock_data_by_period(
+                    df,
+                    start_date=start_date,
+                    end_date=end_date,
+                    last_n_days=last_n_days,
+                    days_ago=days_ago,
+                    lookback_days=lookback_days,
                 )
 
-                result_data = {
-                    "return_percentage": final_result["Return [%]"],
-                    "trade_count": final_result["# Trades"],
-                    "best_params": best_params,
-                    "recent_buy_signal": has_recent_buy_signal,
-                    "recent_sell_signal": has_recent_sell_signal,
-                }
+                try:
+                    # バックテストの実行
+                    bt, final_result, best_params, has_recent_buy_signal, has_recent_sell_signal, strategy_name = run_optimized_backtest(
+                        filtered_df, strategy_class, optimize=optimize
+                    )
+                    print(f"{ticker} のバックテスト結果: {final_result}")
 
-                # グラフ生成
-                grid_plot = bt.plot(open_browser=False)
-                output_dir = os.path.join("data", "backtest_graph")
-                os.makedirs(output_dir, exist_ok=True)
+                    # 結果を保存
+                    if has_recent_buy_signal:
+                        buy_signal_tickers.append(ticker)
 
-                # ファイル名を生成
-                output_file_path = os.path.join(output_dir, f"{ticker}_{strategy_name}_{interval}.html")
-                output_file(output_file_path)
-                save(grid_plot)
+                    # 利益が最大の銘柄を更新
+                    return_percentage = final_result["Return [%]"]
+                    if return_percentage > best_return:
+                        best_return = return_percentage
+                        best_ticker = ticker
 
-                # HTMLファイルを読み込む
-                with open(output_file_path, "r", encoding="utf-8") as f:
-                    graph_html = f.read()
+                        # 最も利益が出た銘柄のグラフHTMLを保存
+                        grid_plot = bt.plot(open_browser=False)
+                        best_graph_html = file_html(grid_plot, CDN, f"{ticker}_{strategy_name}_{interval}")
 
-            except RuntimeError as e:
-                result_data = {"error": str(e)}
-
+                except Exception as e:
+                    print(f"{ticker} のバックテスト中にエラーが発生: {e}")
+                    result_data = {"error": str(e)}
+        else:
+            print("フォームエラー:", form.errors)  # フォームエラーをログに出力
+            result_data = {"error": "フォームの入力にエラーがあります。"}
     else:
         form = BacktestForm()
+
+    print("最も利益が出た銘柄:", best_ticker)
+    print("最も利益が出た銘柄のリターン:", best_return)
 
     return render(request, "backtest_app/index.html", {
         "form": form,
         "result_data": result_data,
-        "graph_html": graph_html,
+        "graph_html": best_graph_html,  # 最も利益が出た銘柄のグラフを表示
+        "buy_signal_tickers": buy_signal_tickers,
+        "best_ticker": best_ticker,
+        "best_return": best_return,
     })
 
 def update_stock_data(request):

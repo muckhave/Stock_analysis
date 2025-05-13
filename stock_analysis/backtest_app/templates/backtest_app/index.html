@@ -2,63 +2,39 @@
 {% block body %}
 <h1>バックテストを実行</h1>
 
+{% if form.errors %}
+    <div style="color: red;">
+        <h3>フォームエラー:</h3>
+        <ul>
+            {% for field, errors in form.errors.items %}
+                <li>{{ field }}: {{ errors|join:", " }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+{% endif %}
+
 <form method="post">
     {% csrf_token %}
     {{ form.as_p }}
-    
-
-
     <button type="submit">実行</button>
 </form>
 
-<form id="update-stock-data-form" method="POST" action="{% url 'update_stock_data' %}">
+<form method="post" action="{% url 'update_stock_data' %}">
     {% csrf_token %}
-    <button type="button" id="update-stock-data-button">最新データに更新</button>
+    <button type="submit">最新データを更新</button>
 </form>
-
-<script>
-    document.getElementById("update-stock-data-button").addEventListener("click", function () {
-        const form = document.getElementById("update-stock-data-form");
-        const formData = new FormData(form);
-
-        fetch(form.action, {
-            method: "POST",
-            headers: {
-                "X-CSRFToken": formData.get("csrfmiddlewaretoken"),
-            },
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.status === "success") {
-                alert(data.message);
-            } else {
-                alert("エラー: " + data.message);
-            }
-        })
-        .catch(error => {
-            console.error("エラー:", error);
-            alert("データ更新中にエラーが発生しました。");
-        });
-    });
-</script>
 
 {% if result_data %}
     <h2>バックテスト結果</h2>
-    {% if result_data.error %}
-        <p style="color: red;">エラー: {{ result_data.error }}</p>
-    {% else %}
-        <p>リターン（%）: {{ result_data.return_percentage }}</p>
-        <p>トレード回数: {{ result_data.trade_count }}</p>
-        <p>最適化されたパラメータ: {{ result_data.best_params }}</p>
-        <p>直近2日に買いシグナル: {{ result_data.recent_buy_signal }}</p>
-        <p>直近2日に売りシグナル: {{ result_data.recent_sell_signal }}</p>
-    {% endif %}
+    <pre>{{ result_data|safe }}</pre>
+{% else %}
+    <p>バックテスト結果がありません。</p>
 {% endif %}
 
 {% if graph_html %}
-    <h2>バックテスト結果グラフ</h2>
-    <div>
-        {{ graph_html|safe }}
-    </div>
+    <h2>グラフ</h2>
+    <div>{{ graph_html|safe }}</div>
+{% else %}
+    <p>グラフがありません。</p>
 {% endif %}
 {% endblock %}
