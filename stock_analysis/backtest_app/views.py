@@ -14,7 +14,7 @@ from .strategies import (
     RSISignalStrategy,
     RSIMACDStrategy,
 )
-from .utils import get_stock_data, get_stock_minute_data, filter_stock_data_by_period, fetch_and_save_all_symbols_all_intervals, run_optimized_backtest
+from .utils import get_stock_data, get_stock_minute_data, filter_stock_data_by_period, fetch_and_save_all_symbols_all_intervals, run_optimized_backtest, get_stock_name
 import talib
 import numpy as np
 import pandas as pd
@@ -75,21 +75,22 @@ print(f"MACDシグナル: {macd_signal}")
 print(f"MACDヒストグラム: {macd_hist}")
 
 def index(request):
-    result_data = None
+    result_data = None  # 初期化
     graph_html = None
     buy_signal_tickers = []  # 直近2日で買いシグナルが出た銘柄
+    sell_signal_tickers = []  # 直近2日で売りシグナルが出た銘柄
     best_ticker = None  # 最も利益が出た銘柄
+    best_ticker_name = None  # 最も利益が出た銘柄の名前
     best_return = float('-inf')  # 最大利益の初期値
     best_graph_html = None  # 最も利益が出た銘柄のグラフHTMLを保存する変数
-
-    print("リクエストメソッド:", request.method)
+    total_return = 0  # 全銘柄のリターン合計
+    total_trades = 0  # 全銘柄の取引回数合計
+    ticker_count = 0  # 処理した銘柄数
 
     if request.method == "POST":
         form = BacktestForm(request.POST)
-        print("フォームのバリデーション:", form.is_valid())
         if form.is_valid():
             tickers = form.cleaned_data["ticker"]  # 選択された銘柄リストを取得
-            print("選択された銘柄:", tickers)
             strategy_name = form.cleaned_data["strategy"]
             interval = form.cleaned_data["interval"]
             optimize = form.cleaned_data["optimize"]  # 最適化の選択を取得
@@ -115,15 +116,14 @@ def index(request):
 
             for ticker in tickers:
                 ticker = ticker.strip()
-                print(f"処理中の銘柄: {ticker}")
+                ticker_name = get_stock_name(ticker)  # 銘柄名を取得
+                ticker_count += 1
 
                 # データ取得
                 if interval == "daily":
                     df = get_stock_data(ticker, drop_na=True)
                 elif interval == "minute":
                     df = get_stock_minute_data(ticker, drop_na=True)
-
-                print(f"{ticker} のデータフレーム: {df.head()}")
 
                 # 計測期間でデータをフィルタリング
                 filtered_df = filter_stock_data_by_period(
@@ -140,41 +140,64 @@ def index(request):
                     bt, final_result, best_params, has_recent_buy_signal, has_recent_sell_signal, strategy_name = run_optimized_backtest(
                         filtered_df, strategy_class, optimize=optimize
                     )
-                    print(f"{ticker} のバックテスト結果: {final_result}")
 
                     # 結果を保存
                     if has_recent_buy_signal:
-                        buy_signal_tickers.append(ticker)
+                        buy_signal_tickers.append(f"{ticker} ({ticker_name})")
+                    if has_recent_sell_signal:
+                        sell_signal_tickers.append(f"{ticker} ({ticker_name})")
 
                     # 利益が最大の銘柄を更新
                     return_percentage = final_result["Return [%]"]
+                    total_return += return_percentage  # リターンを合計
+                    total_trades += final_result["# Trades"]  # 取引回数を合計
+
                     if return_percentage > best_return:
                         best_return = return_percentage
                         best_ticker = ticker
+                        best_ticker_name = ticker_name
 
                         # 最も利益が出た銘柄のグラフHTMLを保存
                         grid_plot = bt.plot(open_browser=False)
                         best_graph_html = file_html(grid_plot, CDN, f"{ticker}_{strategy_name}_{interval}")
 
+                        # 最も利益が出た銘柄のバックテスト結果を保存
+                        best_result_data = {
+                            "return_percentage": final_result["Return [%]"],
+                            "trade_count": final_result["# Trades"],
+                            "best_params": best_params,
+                            "recent_buy_signal": has_recent_buy_signal,
+                            "recent_sell_signal": has_recent_sell_signal,
+                        }
+
                 except Exception as e:
                     print(f"{ticker} のバックテスト中にエラーが発生: {e}")
-                    result_data = {"error": str(e)}
+
+            # 平均リターンと平均取引回数を計算
+            average_return = total_return / ticker_count if ticker_count > 0 else 0
+            average_trades = total_trades / ticker_count if ticker_count > 0 else 0
+
+            # バックテスト結果を result_data に保存
+            result_data = {
+                "best_ticker": f"{best_ticker} ({best_ticker_name})",
+                "best_return": best_return,
+                "best_result_data": best_result_data,
+                "buy_signal_tickers": buy_signal_tickers,
+                "sell_signal_tickers": sell_signal_tickers,
+                "average_return": average_return,
+                "average_trades": average_trades,
+            }
+
         else:
-            print("フォームエラー:", form.errors)  # フォームエラーをログに出力
+            print("フォームエラー:", form.errors)
             result_data = {"error": "フォームの入力にエラーがあります。"}
     else:
         form = BacktestForm()
 
-    print("最も利益が出た銘柄:", best_ticker)
-    print("最も利益が出た銘柄のリターン:", best_return)
-
     return render(request, "backtest_app/index.html", {
         "form": form,
         "result_data": result_data,
-        "graph_html": best_graph_html,  # 最も利益が出た銘柄のグラフを表示
-        "buy_signal_tickers": buy_signal_tickers,
-        "best_ticker": best_ticker,
-        "best_return": best_return,
+        "graph_html": best_graph_html,
     })
 
 def update_stock_data(request):

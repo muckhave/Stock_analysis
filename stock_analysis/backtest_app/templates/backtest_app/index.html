@@ -25,10 +25,17 @@
 </form>
 
 {% if result_data %}
-    <h2>バックテスト結果</h2>
-    <pre>{{ result_data|safe }}</pre>
-{% else %}
-    <p>バックテスト結果がありません。</p>
+    {% if result_data.error %}
+        <p style="color: red;">エラー: {{ result_data.error }}</p>
+    {% else %}
+        <h2>バックテスト結果</h2>
+        <p>最も利益が出た銘柄: {{ result_data.best_ticker }}</p>
+        <p>最も利益が出た銘柄のリターン: {{ result_data.best_return }}%</p>
+        <p>直近2日間で買いフラグが出た銘柄: {{ result_data.buy_signal_tickers|join:", " }}</p>
+        <p>直近2日間で売りフラグが出た銘柄: {{ result_data.sell_signal_tickers|join:", " }}</p>
+        <p>各銘柄の平均リターン: {{ result_data.average_return }}%</p>
+        <p>各銘柄の平均取引回数: {{ result_data.average_trades }}</p>
+    {% endif %}
 {% endif %}
 
 {% if graph_html %}
