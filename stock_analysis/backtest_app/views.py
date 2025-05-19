@@ -1,7 +1,7 @@
-from django.shortcuts import render
+from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse
-from .forms import BacktestForm
-from .models import BacktestResult
+from .forms import BacktestForm, StockSymbolForm
+from .models import BacktestResult, StockSymbol
 from backtesting import Backtest
 from .strategies import (
     SmaCross,
@@ -202,27 +202,60 @@ def index(request):
 
 def update_stock_data(request):
     """
-    最新データを取得して保存するビュー。
+    最新データを更新するビュー。
     """
     if request.method == "POST":
-        # 銘柄リストを指定（例: データベースや設定ファイルから取得）
-        # symbols = ["7012.T", "7011.T", "6146.T"]  # 必要に応じて変更
-        symbols = [
-    "7012.T", "7011.T", "6146.T", "6857.T", "7203.T", "8306.T", "5803.T", "2432.T", "8316.T", "8035.T",
-    "6758.T", "9983.T", "7013.T", "9984.T", "8411.T", "6501.T", "6098.T", "7974.T", "8136.T", "6861.T",
-    "6920.T", "9104.T", "7267.T", "4676.T", "8058.T", "8725.T", "8766.T", "4063.T", "9101.T", "9432.T",
-    "285A.T", "7182.T", "8001.T", "4502.T", "9749.T", "8031.T", "2914.T", "7741.T", "7936.T", "6702.T",
-    "6981.T", "5016.T", "6503.T", "6752.T", "6902.T", "6273.T", "9433.T", "9434.T", "6723.T", "4568.T",
-    "6954.T", "4755.T", "8630.T", "5401.T", "4751.T", "6367.T", "6532.T", "7751.T", "4661.T", "6701.T",
-    "8604.T", "8002.T", "7261.T", "7201.T", "4519.T", "8053.T", "6762.T", "8801.T", "9021.T", "8309.T",
-    "1605.T", "5108.T", "4543.T", "9020.T", "7735.T", "7003.T", "9107.T", "7270.T", "7269.T", "8802.T",
-    "8308.T", "4004.T", "9501.T", "5411.T", "6301.T", "6201.T", "7832.T", "5801.T", "8591.T", "4503.T",
-    "6526.T", "5406.T", "4901.T", "4578.T", "8750.T", "5838.T", "6594.T", "2502.T", "5802.T", "^N225"
-    ]
-        try:
-            fetch_and_save_all_symbols_all_intervals(symbols)
-            return JsonResponse({"status": "success", "message": "データを更新しました！"})
-        except Exception as e:
-            return JsonResponse({"status": "error", "message": str(e)})
+        # データ更新処理をここに記述
+        return render(request, "backtest_app/update_complete.html")
+    return render(request, "backtest_app/update_stock_data.html")
 
-    return JsonResponse({"status": "error", "message": "無効なリクエストです。"})
+from django.db import IntegrityError
+
+def settings_page(request):
+    """
+    設定ページのビュー。
+    銘柄リストの管理を行う。
+    """
+    message = None  # メッセージを表示するための変数
+
+    if request.method == "POST":
+        if "delete" in request.POST:  # 削除ボタンが押された場合
+            stock_id = request.POST.get("stock_id")
+            stock = get_object_or_404(StockSymbol, id=stock_id)
+            stock.delete()
+            return redirect("settings_page")  # 設定ページにリダイレクト
+        elif "add_bulk" in request.POST:  # 一括追加フォームが送信された場合
+            bulk_codes = request.POST.get("bulk_codes", "")
+            codes = [code.strip() for code in bulk_codes.split(",") if code.strip()]  # カンマ区切りで分割
+            existing_codes = set(StockSymbol.objects.values_list("code", flat=True))  # 既存の銘柄コードを取得
+            new_codes = [code for code in codes if code not in existing_codes]  # 重複を除外
+
+            for code in new_codes:
+                try:
+                    StockSymbol.objects.create(code=code)
+                except IntegrityError:
+                    pass  # 重複エラーを無視
+
+            message = f"{len(new_codes)} 件の銘柄コードを追加しました。"
+        else:  # 通常のフォーム送信
+            form = StockSymbolForm(request.POST)
+            if form.is_valid():
+                form.save()
+                return redirect("settings_page")  # 設定ページにリダイレクト
+    else:
+        form = StockSymbolForm()
+
+    # 現在の銘柄リストを取得
+    symbols = StockSymbol.objects.all()
+
+    # 銘柄コードから銘柄名を取得
+    symbols_with_names = [
+        {"id": symbol.id, "code": symbol.code, "name": get_stock_name(symbol.code)}
+        for symbol in symbols
+    ]
+
+    return render(request, "backtest_app/settings_page.html", {
+        "form": form,
+        "symbols": symbols_with_names,
+        "message": message,
+    })

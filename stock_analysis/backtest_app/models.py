@@ -1,5 +1,12 @@
 from django.db import models
 
+class StockSymbol(models.Model):
+    code = models.CharField(max_length=20, unique=True, verbose_name="銘柄コード")
+
+    def __str__(self):
+        return self.code
+
+
 class BacktestResult(models.Model):
     ticker = models.CharField(max_length=10)
     strategy_name = models.CharField(max_length=50)

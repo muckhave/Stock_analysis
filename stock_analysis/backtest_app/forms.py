@@ -1,4 +1,5 @@
 from django import forms
+from .models import StockSymbol
 
 SYMBOL_CHOICES = [
     ("7012.T", "7012.T"), ("7011.T", "7011.T"), ("6146.T", "6146.T"), ("6857.T", "6857.T"), ("7203.T", "7203.T"),
@@ -37,3 +38,11 @@ class BacktestForm(forms.Form):
     days_ago = forms.IntegerField(label="N日前から", required=False)
     lookback_days = forms.IntegerField(label="過去N日間", required=False)
     optimize = forms.BooleanField(label="最適化を実行", required=False, initial=True)
+
+class StockSymbolForm(forms.ModelForm):
+    class Meta:
+        model = StockSymbol
+        fields = ["code"]
+        labels = {
+            "code": "銘柄コード",
+        }

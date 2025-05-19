@@ -10,8 +10,17 @@
 
 <body>
     <div class="wrapper">
-    {% block body %}
-    {% endblock %}
+        <!-- グローバルナビゲーション -->
+        <nav class="global-nav">
+            <ul>
+                <li><a href="{% url 'index' %}">バックテスト</a></li>
+                <li><a href="{% url 'settings_page' %}">設定ページ</a></li>
+            </ul>
+        </nav>
+
+        <!-- コンテンツ -->
+        {% block body %}
+        {% endblock %}
     </div>
 </body>
 

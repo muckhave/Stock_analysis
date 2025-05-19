@@ -1,0 +1,54 @@
+{% extends 'base/base.html' %}
+
+{% block body %}
+<h1>設定ページ</h1>
+
+<!-- 銘柄追加フォーム -->
+<h2>銘柄を追加</h2>
+<form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit">追加</button>
+</form>
+
+<!-- 一括追加フォーム -->
+<h2>銘柄コードを一括追加</h2>
+<form method="post">
+    {% csrf_token %}
+    <textarea name="bulk_codes" rows="4" cols="50" placeholder="カンマ区切りで銘柄コードを入力してください"></textarea>
+    <br>
+    <button type="submit" name="add_bulk">一括追加</button>
+</form>
+
+<!-- メッセージ表示 -->
+{% if message %}
+    <p style="color: green;">{{ message }}</p>
+{% endif %}
+
+<!-- 現在の銘柄リスト -->
+<h2>現在の銘柄リスト</h2>
+<table>
+    <thead>
+        <tr>
+            <th>銘柄コード</th>
+            <th>銘柄名</th>
+            <th>操作</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for symbol in symbols %}
+        <tr>
+            <td>{{ symbol.code }}</td>
+            <td>{{ symbol.name }}</td>
+            <td>
+                <form method="post" style="display: inline;">
+                    {% csrf_token %}
+                    <input type="hidden" name="stock_id" value="{{ symbol.id }}">
+                    <button type="submit" name="delete" style="color: red;">削除</button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

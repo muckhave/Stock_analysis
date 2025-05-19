@@ -749,7 +749,7 @@ def main():
     # strategy_class = RSISignalStrategy
 
     # 以下うまくいかない
-    strategy_class = RSIMACDStrategy
+    strategy_class = SmaCross
 
     # 結果を格納するリスト
     returns = []
