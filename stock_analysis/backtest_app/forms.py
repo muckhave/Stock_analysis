@@ -1,17 +1,10 @@
 from django import forms
 from .models import StockSymbol
 
-SYMBOL_CHOICES = [
-    ("7012.T", "7012.T"), ("7011.T", "7011.T"), ("6146.T", "6146.T"), ("6857.T", "6857.T"), ("7203.T", "7203.T"),
-    ("8306.T", "8306.T"), ("5803.T", "5803.T"), ("2432.T", "2432.T"), ("8316.T", "8316.T"), ("8035.T", "8035.T"),
-    # 必要に応じてリストを続ける...
-    ("^N225", "^N225"),
-]
-
 class BacktestForm(forms.Form):
     ticker = forms.MultipleChoiceField(
         label="銘柄コード（複数選択可）",
-        choices=SYMBOL_CHOICES,
+        choices=[],  # 動的に設定される
         widget=forms.CheckboxSelectMultiple,
     )
     strategy = forms.ChoiceField(

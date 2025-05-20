@@ -75,25 +75,32 @@ print(f"MACDシグナル: {macd_signal}")
 print(f"MACDヒストグラム: {macd_hist}")
 
 def index(request):
-    result_data = None  # 初期化
+    """
+    バックテストのメインページ。
+    """
+    result_data = None
     graph_html = None
-    buy_signal_tickers = []  # 直近2日で買いシグナルが出た銘柄
-    sell_signal_tickers = []  # 直近2日で売りシグナルが出た銘柄
-    best_ticker = None  # 最も利益が出た銘柄
-    best_ticker_name = None  # 最も利益が出た銘柄の名前
-    best_return = float('-inf')  # 最大利益の初期値
-    best_graph_html = None  # 最も利益が出た銘柄のグラフHTMLを保存する変数
-    total_return = 0  # 全銘柄のリターン合計
-    total_trades = 0  # 全銘柄の取引回数合計
-    ticker_count = 0  # 処理した銘柄数
+    buy_signal_tickers = []
+    sell_signal_tickers = []
+    best_ticker = None
+    best_ticker_name = None
+    best_return = float('-inf')
+    best_graph_html = None
+    total_return = 0
+    total_trades = 0
+    ticker_count = 0
 
     if request.method == "POST":
+        # フォームの初期化と選択肢の設定
+        stock_symbols = StockSymbol.objects.values_list("code", flat=True)
         form = BacktestForm(request.POST)
+        form.fields["ticker"].choices = [(code, code) for code in stock_symbols]
+
         if form.is_valid():
-            tickers = form.cleaned_data["ticker"]  # 選択された銘柄リストを取得
+            tickers = form.cleaned_data["ticker"]
             strategy_name = form.cleaned_data["strategy"]
             interval = form.cleaned_data["interval"]
-            optimize = form.cleaned_data["optimize"]  # 最適化の選択を取得
+            optimize = form.cleaned_data["optimize"]
 
             # 計測期間の取得
             start_date = form.cleaned_data.get("start_date")
@@ -115,27 +122,27 @@ def index(request):
             }[strategy_name]
 
             for ticker in tickers:
-                ticker = ticker.strip()
-                ticker_name = get_stock_name(ticker)  # 銘柄名を取得
-                ticker_count += 1
-
-                # データ取得
-                if interval == "daily":
-                    df = get_stock_data(ticker, drop_na=True)
-                elif interval == "minute":
-                    df = get_stock_minute_data(ticker, drop_na=True)
-
-                # 計測期間でデータをフィルタリング
-                filtered_df = filter_stock_data_by_period(
-                    df,
-                    start_date=start_date,
-                    end_date=end_date,
-                    last_n_days=last_n_days,
-                    days_ago=days_ago,
-                    lookback_days=lookback_days,
-                )
-
                 try:
+                    ticker = ticker.strip()
+                    ticker_name = get_stock_name(ticker)
+                    ticker_count += 1
+
+                    # データ取得
+                    if interval == "daily":
+                        df = get_stock_data(ticker, drop_na=True)
+                    elif interval == "minute":
+                        df = get_stock_minute_data(ticker, drop_na=True)
+
+                    # 計測期間でデータをフィルタリング
+                    filtered_df = filter_stock_data_by_period(
+                        df,
+                        start_date=start_date,
+                        end_date=end_date,
+                        last_n_days=last_n_days,
+                        days_ago=days_ago,
+                        lookback_days=lookback_days,
+                    )
+
                     # バックテストの実行
                     bt, final_result, best_params, has_recent_buy_signal, has_recent_sell_signal, strategy_name = run_optimized_backtest(
                         filtered_df, strategy_class, optimize=optimize
@@ -149,8 +156,8 @@ def index(request):
 
                     # 利益が最大の銘柄を更新
                     return_percentage = final_result["Return [%]"]
-                    total_return += return_percentage  # リターンを合計
-                    total_trades += final_result["# Trades"]  # 取引回数を合計
+                    total_return += return_percentage
+                    total_trades += final_result["# Trades"]
 
                     if return_percentage > best_return:
                         best_return = return_percentage
@@ -192,7 +199,10 @@ def index(request):
             print("フォームエラー:", form.errors)
             result_data = {"error": "フォームの入力にエラーがあります。"}
     else:
+        # GET リクエスト時にフォームを初期化
+        stock_symbols = StockSymbol.objects.values_list("code", flat=True)
         form = BacktestForm()
+        form.fields["ticker"].choices = [(code, code) for code in stock_symbols]
 
     return render(request, "backtest_app/index.html", {
         "form": form,
