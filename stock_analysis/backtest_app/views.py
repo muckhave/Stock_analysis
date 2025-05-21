@@ -94,7 +94,9 @@ def index(request):
         # フォームの初期化と選択肢の設定
         stock_symbols = StockSymbol.objects.values_list("code", flat=True)
         form = BacktestForm(request.POST)
-        form.fields["ticker"].choices = [(code, code) for code in stock_symbols]
+        form.fields["ticker"].choices = [
+            (code, f"{code} ({get_stock_name(code)})") for code in stock_symbols
+        ]
 
         if form.is_valid():
             tickers = form.cleaned_data["ticker"]
@@ -202,7 +204,9 @@ def index(request):
         # GET リクエスト時にフォームを初期化
         stock_symbols = StockSymbol.objects.values_list("code", flat=True)
         form = BacktestForm()
-        form.fields["ticker"].choices = [(code, code) for code in stock_symbols]
+        form.fields["ticker"].choices = [
+            (code, f"{code} ({get_stock_name(code)})") for code in stock_symbols
+        ]
 
     return render(request, "backtest_app/index.html", {
         "form": form,
@@ -235,6 +239,7 @@ def settings_page(request):
     銘柄リストの管理を行う。
     """
     message = None  # メッセージを表示するための変数
+    form = StockSymbolForm()  # フォームを初期化
 
     if request.method == "POST":
         if "delete" in request.POST:  # 削除ボタンが押された場合
@@ -260,8 +265,6 @@ def settings_page(request):
             if form.is_valid():
                 form.save()
                 return redirect("settings_page")  # 設定ページにリダイレクト
-    else:
-        form = StockSymbolForm()
 
     # 現在の銘柄リストを取得
     symbols = StockSymbol.objects.all()

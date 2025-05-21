@@ -1,4 +1,5 @@
 {% extends 'base/base.html' %}
+
 {% block body %}
 <h1>バックテストを実行</h1>
 
@@ -12,6 +13,12 @@
         </ul>
     </div>
 {% endif %}
+
+<!-- 一括チェックボタン -->
+<div>
+    <button type="button" onclick="toggleCheckboxes(true)">すべて選択</button>
+    <button type="button" onclick="toggleCheckboxes(false)">すべて解除</button>
+</div>
 
 <form method="post">
     {% csrf_token %}
@@ -44,4 +51,14 @@
 {% else %}
     <p>グラフがありません。</p>
 {% endif %}
+
+<script>
+    // すべてのチェックボックスを選択または解除する関数
+    function toggleCheckboxes(checked) {
+        const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = checked;
+        });
+    }
+</script>
 {% endblock %}
