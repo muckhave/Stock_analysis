@@ -80,6 +80,58 @@
     </table>
 {% endif %}
 
+{% if buy_signals %}
+    <h2>買いフラグが出た銘柄</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>銘柄コード</th>
+                <th>銘柄名</th>
+                <th>フラグ日付</th>
+                <th>最適値</th>
+                <th>戦略名</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for signal in buy_signals %}
+            <tr>
+                <td>{{ signal.code }}</td>
+                <td>{{ signal.name }}</td>
+                <td>{{ signal.date }}</td>
+                <td>{{ signal.best_params }}</td>
+                <td>{{ signal.strategy }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endif %}
+
+{% if sell_signals %}
+    <h2>売りフラグが出た銘柄</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>銘柄コード</th>
+                <th>銘柄名</th>
+                <th>フラグ日付</th>
+                <th>最適値</th>
+                <th>戦略名</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for signal in sell_signals %}
+            <tr>
+                <td>{{ signal.code }}</td>
+                <td>{{ signal.name }}</td>
+                <td>{{ signal.date }}</td>
+                <td>{{ signal.best_params }}</td>
+                <td>{{ signal.strategy }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endif %}
+
 <script>
     // すべてのチェックボックスを選択または解除する関数
     function toggleCheckboxes(checked) {

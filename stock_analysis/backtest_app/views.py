@@ -52,27 +52,6 @@ def is_json_serializable(value):
     except (TypeError, OverflowError):
         return False
 
-# df = pd.DataFrame({
-#     'Open': [100, 102, 104],
-#     'High': [105, 107, 109],
-#     'Low': [95, 97, 99],
-#     'Close': [102, 104, 106],
-#     'Volume': [1000, 1100, 1200]
-# })
-
-# # データフレームの内容を出力
-# print("データフレームの内容:", df.head())
-
-# # RSIの計算結果を出力
-# rsi_values = rsi(df)
-# print(f"RSIの計算結果: {rsi_values}")
-
-# # MACDの計算結果を出力（型を明示的に変換）
-# close_prices = df['Close'].dropna().astype(np.float64).values
-# macd, macd_signal, macd_hist = talib.MACD(close_prices, fastperiod=12, slowperiod=26, signalperiod=9)
-# print(f"MACD: {macd}")
-# print(f"MACDシグナル: {macd_signal}")
-# print(f"MACDヒストグラム: {macd_hist}")
 
 def index(request):
     """
@@ -224,13 +203,15 @@ def index(request):
         ]
 
     # フラグが出た銘柄を取得してテンプレートに渡す
-    flagged_tickers = SignalResult.objects.all()
+    buy_signals = SignalResult.objects.filter(signal="買い").order_by('-date')
+    sell_signals = SignalResult.objects.filter(signal="売り").order_by('-date')
 
     return render(request, "backtest_app/index.html", {
         "form": form,
         "result_data": result_data,
         "graph_html": best_graph_html,
-        "flagged_tickers": flagged_tickers,
+        "buy_signals": buy_signals,
+        "sell_signals": sell_signals,
     })
 
 def update_stock_data(request):
