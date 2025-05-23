@@ -17,3 +17,15 @@ class BacktestResult(models.Model):
 
     def __str__(self):
         return f"{self.ticker} - {self.strategy_name}"
+
+
+class SignalResult(models.Model):
+    code = models.CharField(max_length=20, unique=True, verbose_name="銘柄コード")
+    name = models.CharField(max_length=100, verbose_name="銘柄名")
+    date = models.DateField(verbose_name="フラグ日付")
+    best_params = models.JSONField(verbose_name="最適値")
+    strategy = models.CharField(max_length=50, verbose_name="戦略名")
+    signal = models.CharField(max_length=10, verbose_name="シグナル")  # "買い" または "売り"
+
+    def __str__(self):
+        return f"{self.code} - {self.signal}"

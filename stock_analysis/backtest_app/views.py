@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse
 from .forms import BacktestForm, StockSymbolForm
-from .models import BacktestResult, StockSymbol
+from .models import BacktestResult, StockSymbol, SignalResult
 from backtesting import Backtest
 from .strategies import (
     SmaCross,
@@ -36,7 +36,7 @@ def rsi(data, period=14):
     """
     close_prices = data['Close'].dropna().values  # 欠損値を削除して終値を取得
     close_prices = close_prices.astype(np.float64)  # 型を明示的にfloat64に変換
-    print('rsi関数発動;j')
+    print('rsi関数発動;')
     return talib.RSI(close_prices, timeperiod=period)
 
 def filter_serializable(data):
@@ -52,27 +52,27 @@ def is_json_serializable(value):
     except (TypeError, OverflowError):
         return False
 
-df = pd.DataFrame({
-    'Open': [100, 102, 104],
-    'High': [105, 107, 109],
-    'Low': [95, 97, 99],
-    'Close': [102, 104, 106],
-    'Volume': [1000, 1100, 1200]
-})
+# df = pd.DataFrame({
+#     'Open': [100, 102, 104],
+#     'High': [105, 107, 109],
+#     'Low': [95, 97, 99],
+#     'Close': [102, 104, 106],
+#     'Volume': [1000, 1100, 1200]
+# })
 
-# データフレームの内容を出力
-print("データフレームの内容:", df.head())
+# # データフレームの内容を出力
+# print("データフレームの内容:", df.head())
 
-# RSIの計算結果を出力
-rsi_values = rsi(df)
-print(f"RSIの計算結果: {rsi_values}")
+# # RSIの計算結果を出力
+# rsi_values = rsi(df)
+# print(f"RSIの計算結果: {rsi_values}")
 
-# MACDの計算結果を出力（型を明示的に変換）
-close_prices = df['Close'].dropna().astype(np.float64).values
-macd, macd_signal, macd_hist = talib.MACD(close_prices, fastperiod=12, slowperiod=26, signalperiod=9)
-print(f"MACD: {macd}")
-print(f"MACDシグナル: {macd_signal}")
-print(f"MACDヒストグラム: {macd_hist}")
+# # MACDの計算結果を出力（型を明示的に変換）
+# close_prices = df['Close'].dropna().astype(np.float64).values
+# macd, macd_signal, macd_hist = talib.MACD(close_prices, fastperiod=12, slowperiod=26, signalperiod=9)
+# print(f"MACD: {macd}")
+# print(f"MACDシグナル: {macd_signal}")
+# print(f"MACDヒストグラム: {macd_hist}")
 
 def index(request):
     """
@@ -89,6 +89,7 @@ def index(request):
     total_return = 0
     total_trades = 0
     ticker_count = 0
+    best_result_data = None  # 初期化
 
     if request.method == "POST":
         # フォームの初期化と選択肢の設定
@@ -150,6 +151,20 @@ def index(request):
                         filtered_df, strategy_class, optimize=optimize
                     )
 
+                    # フラグが出た場合、データベースに保存（上書き）
+                    if has_recent_buy_signal or has_recent_sell_signal:
+                        signal = "買い" if has_recent_buy_signal else "売り"
+                        SignalResult.objects.update_or_create(
+                            code=ticker,
+                            defaults={
+                                "name": ticker_name,
+                                "date": filtered_df.index[-1].strftime("%Y-%m-%d"),
+                                "best_params": {k: int(v) if isinstance(v, np.integer) else v for k, v in best_params.items()},
+                                "strategy": strategy_name,
+                                "signal": signal,
+                            },
+                        )
+
                     # 結果を保存
                     if has_recent_buy_signal:
                         buy_signal_tickers.append(f"{ticker} ({ticker_name})")
@@ -208,10 +223,14 @@ def index(request):
             (code, f"{code} ({get_stock_name(code)})") for code in stock_symbols
         ]
 
+    # フラグが出た銘柄を取得してテンプレートに渡す
+    flagged_tickers = SignalResult.objects.all()
+
     return render(request, "backtest_app/index.html", {
         "form": form,
         "result_data": result_data,
         "graph_html": best_graph_html,
+        "flagged_tickers": flagged_tickers,
     })
 
 def update_stock_data(request):

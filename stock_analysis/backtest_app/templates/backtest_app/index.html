@@ -52,6 +52,34 @@
     <p>グラフがありません。</p>
 {% endif %}
 
+{% if flagged_tickers %}
+    <h2>フラグが出た銘柄</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>銘柄コード</th>
+                <th>銘柄名</th>
+                <th>フラグ日付</th>
+                <th>最適値</th>
+                <th>戦略名</th>
+                <th>シグナル</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for ticker in flagged_tickers %}
+            <tr>
+                <td>{{ ticker.code }}</td>
+                <td>{{ ticker.name }}</td>
+                <td>{{ ticker.date }}</td>
+                <td>{{ ticker.best_params }}</td>
+                <td>{{ ticker.strategy }}</td>
+                <td>{{ ticker.signal }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endif %}
+
 <script>
     // すべてのチェックボックスを選択または解除する関数
     function toggleCheckboxes(checked) {
