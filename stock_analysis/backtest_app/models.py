@@ -29,3 +29,14 @@ class SignalResult(models.Model):
 
     def __str__(self):
         return f"{self.code} - {self.signal}"
+
+
+class OptimizationResult(models.Model):
+    ticker = models.CharField(max_length=10, verbose_name="銘柄コード")
+    strategy_name = models.CharField(max_length=50, verbose_name="戦略名")
+    best_params = models.JSONField(verbose_name="最適値")  # JSONField を使用
+    final_result = models.JSONField(verbose_name="最終結果")  # final_result を保存するフィールド
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="作成日時")
+
+    def __str__(self):
+        return f"{self.ticker} - {self.strategy_name}"

@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse
 from .forms import BacktestForm, StockSymbolForm
-from .models import BacktestResult, StockSymbol, SignalResult
+from .models import BacktestResult, StockSymbol, SignalResult, OptimizationResult
 from backtesting import Backtest
 from .strategies import (
     SmaCross,
@@ -125,24 +125,58 @@ def index(request):
                         lookback_days=lookback_days,
                     )
 
-                    # バックテストの実行
-                    bt, final_result, best_params, has_recent_buy_signal, has_recent_sell_signal, strategy_name = run_optimized_backtest(
-                        filtered_df, strategy_class, optimize=optimize
-                    )
-
-                    # フラグが出た場合、データベースに保存（上書き）
-                    if has_recent_buy_signal or has_recent_sell_signal:
-                        signal = "買い" if has_recent_buy_signal else "売り"
-                        SignalResult.objects.update_or_create(
-                            code=ticker,
-                            defaults={
-                                "name": ticker_name,
-                                "date": filtered_df.index[-1].strftime("%Y-%m-%d"),
-                                "best_params": {k: int(v) if isinstance(v, np.integer) else v for k, v in best_params.items()},
-                                "strategy": strategy_name,
-                                "signal": signal,
-                            },
+                    try:
+                        # バックテストの実行
+                        bt, final_result, best_params, has_recent_buy_signal, has_recent_sell_signal, strategy_name = run_optimized_backtest(
+                            filtered_df, strategy_class, optimize=optimize
                         )
+
+                        # final_result を辞書形式に変換し、Timestamp や Timedelta を文字列に変換
+                        final_result_dict = final_result.to_dict()
+                        for key, value in final_result_dict.items():
+                            if isinstance(value, pd.Timestamp):
+                                final_result_dict[key] = value.strftime('%Y-%m-%d %H:%M:%S')  # 日付形式に変換
+                            elif isinstance(value, pd.Timedelta):
+                                final_result_dict[key] = str(value)  # Timedelta を文字列に変換
+
+                        # 不要なキーを削除
+                        keys_to_remove = ["_strategy", "_equity_curve", "_trades"]
+                        for key in keys_to_remove:
+                            if key in final_result_dict:
+                                del final_result_dict[key]
+
+                        # best_params をシリアライズ可能な形式に変換
+                        best_params_serializable = {
+                            k: str(v) if not isinstance(v, (int, float, str)) else v
+                            for k, v in best_params.items()
+                        }
+
+                        # 最適化結果をデータベースに保存
+                        OptimizationResult.objects.create(
+                            ticker=ticker,
+                            strategy_name=strategy_name,
+                            best_params=best_params_serializable,  # シリアライズ可能な形式に変換
+                            final_result=final_result_dict,  # 修正後の辞書を保存
+                        )
+
+                        # フラグが出た場合、データベースに保存（上書き）
+                        if has_recent_buy_signal or has_recent_sell_signal:
+                            signal = "買い" if has_recent_buy_signal else "売り"
+                            SignalResult.objects.update_or_create(
+                                code=ticker,
+                                defaults={
+                                    "name": ticker_name,
+                                    "date": filtered_df.index[-1].strftime("%Y-%m-%d"),
+                                    "best_params": best_params_serializable,  # シリアライズ可能な形式に変換
+                                    "strategy": strategy_name,
+                                    "signal": signal,
+                                },
+                            )
+
+                    except Exception as e:
+                        print(f"{ticker} のバックテスト中にエラーが発生: {e}")
+                        import traceback
+                        traceback.print_exc()
 
                     # 結果を保存
                     if has_recent_buy_signal:
@@ -175,10 +209,17 @@ def index(request):
 
                 except Exception as e:
                     print(f"{ticker} のバックテスト中にエラーが発生: {e}")
+                    import traceback
+                    traceback.print_exc()
 
-            # 平均リターンと平均取引回数を計算
-            average_return = total_return / ticker_count if ticker_count > 0 else 0
-            average_trades = total_trades / ticker_count if ticker_count > 0 else 0
+            try:
+                # 平均リターンと平均取引回数を計算
+                average_return = total_return / ticker_count if ticker_count > 0 else 0
+                average_trades = total_trades / ticker_count if ticker_count > 0 else 0
+            except ZeroDivisionError:
+                # ticker_count が 0 の場合のエラー処理
+                average_return = 0
+                average_trades = 0
 
             # バックテスト結果を result_data に保存
             result_data = {
@@ -279,4 +320,22 @@ def settings_page(request):
         "form": form,
         "symbols": symbols_with_names,
         "message": message,
+    })
+
+from django.core.paginator import Paginator
+
+def data_log(request):
+    """
+    OptimizationResult モデルの内容を表示するページ。
+    """
+    # OptimizationResult モデルの全データを取得
+    results = OptimizationResult.objects.all().order_by('-created_at')
+
+    # ページネーションを設定（1ページに10件表示）
+    paginator = Paginator(results, 10)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    return render(request, "backtest_app/data_log.html", {
+        "page_obj": page_obj,
     })
