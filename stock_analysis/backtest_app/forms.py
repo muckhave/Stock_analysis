@@ -5,7 +5,7 @@ class BacktestForm(forms.Form):
     ticker = forms.MultipleChoiceField(
         label="銘柄コード（複数選択可）",
         choices=[],  # 動的に設定される
-        widget=forms.CheckboxSelectMultiple,
+        widget=forms.CheckboxSelectMultiple(attrs={'class': 'tickers-grid'}),
     )
     strategy = forms.ChoiceField(
         label="戦略",

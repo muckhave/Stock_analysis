@@ -22,7 +22,15 @@
 
 <form method="post">
     {% csrf_token %}
-    {{ form.as_p }}
+    <!-- 他のフォームフィールド -->
+    {{ form.non_field_errors }}
+    {% for field in form %}
+        {% if field.name == "ticker" %}
+            {{ field }}
+        {% else %}
+            <p>{{ field.label_tag }} {{ field }}</p>
+        {% endif %}
+    {% endfor %}
     <button type="submit">実行</button>
 </form>
 
@@ -141,4 +149,23 @@
         });
     }
 </script>
+
+<style>
+.tickers-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+    margin-bottom: 1em;
+}
+.ticker-label {
+    display: flex;
+    align-items: center;
+    padding: 4px;
+}
+@media (min-width: 768px) {
+    .tickers-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+</style>
 {% endblock %}

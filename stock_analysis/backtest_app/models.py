@@ -32,11 +32,12 @@ class SignalResult(models.Model):
 
 
 class OptimizationResult(models.Model):
-    ticker = models.CharField(max_length=10, verbose_name="銘柄コード")
-    strategy_name = models.CharField(max_length=50, verbose_name="戦略名")
-    best_params = models.JSONField(verbose_name="最適値")  # JSONField を使用
-    final_result = models.JSONField(verbose_name="最終結果")  # final_result を保存するフィールド
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name="作成日時")
+    ticker = models.CharField(max_length=10)
+    strategy_name = models.CharField(max_length=100)
+    best_params = models.JSONField()
+    final_result = models.JSONField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    interval = models.CharField(max_length=10, choices=[("daily", "日足"), ("minute", "5分足")], default="daily")  # 新しいフィールド
 
     def __str__(self):
         return f"{self.ticker} - {self.strategy_name}"

@@ -1,5 +1,4 @@
 {% extends 'base/base.html' %}
-
 {% block body %}
     <h1>データログ</h1>
     <table border="1">
@@ -8,24 +7,40 @@
                 <th>ID</th>
                 <th>銘柄コード</th>
                 <th>戦略名</th>
-                <th>最適パラメータ</th>
-                <th>最終結果</th>
                 <th>作成日時</th>
+                <th>時間枠</th>
+                <th>開始日</th>
+                <th>終了日</th>
+                <th>リターン [%]</th>
+                <th>Buy & Hold Return [%]</th> <!-- 新しい列 -->
+                <th>最適値</th> <!-- 新しい列 -->
+                <th>取引回数</th>
+                <th>シャープレシオ</th>
             </tr>
         </thead>
         <tbody>
-            {% for result in page_obj %}
+            {% for result in expanded_results %}
             <tr>
                 <td>{{ result.id }}</td>
                 <td>{{ result.ticker }}</td>
                 <td>{{ result.strategy_name }}</td>
-                <td>{{ result.best_params }}</td>
-                <td>{{ result.final_result }}</td>
                 <td>{{ result.created_at }}</td>
+                <td>{{ result.interval }}</td>
+                <td>{{ result.start }}</td>
+                <td>{{ result.end }}</td>
+                <td>{{ result.return_percentage }}</td>
+                <td>{{ result.buy_and_hold_return }}</td> <!-- Buy & Hold Return [%] を表示 -->
+                <td>
+                    {% for key, value in result.best_params.items %}
+                        {{ key }}: {{ value }}<br>
+                    {% endfor %}
+                </td> <!-- 最適値を表示 -->
+                <td>{{ result.trades }}</td>
+                <td>{{ result.sharpe_ratio }}</td>
             </tr>
             {% empty %}
             <tr>
-                <td colspan="6">データがありません。</td>
+                <td colspan="12">データがありません。</td>
             </tr>
             {% endfor %}
         </tbody>
@@ -43,4 +58,4 @@
             <a href="?page={{ page_obj.next_page_number }}">次のページ</a>
         {% endif %}
     </div>
-    {% endblock %}
+{% endblock %}

@@ -17,7 +17,7 @@ h1 {
 
 /* フォームのスタイル */
 form {
-    max-width: 600px;
+    max-width: 100%;
     margin: 0 auto;
     padding: 20px;
     background-color: #fff;
@@ -114,4 +114,38 @@ a:hover {
 
 .global-nav a:hover {
     text-decoration: underline;
+}
+
+
+.tickers-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+    margin-bottom: 1em;
+}
+.tickers-grid label, .ticker-label {
+    display: flex;
+    align-items: center;
+    padding: 4px;
+    gap: 0.5em;
+    font-size: 14px;
+    /* 追加: チェックボックスのサイズと位置を調整 */
+}
+
+.tickers-grid input[type="checkbox"] {
+    /* チェックボックスの縦位置を中央に */
+    vertical-align: middle;
+    /* 必要ならサイズも調整 */
+    width: 18px;
+    height: 18px;
+    margin: 0 4px 0 0;
+    /* 追加: ブラウザ差異を吸収 */
+    position: relative;
+    top: 0;
+}
+
+@media (min-width: 768px) {
+    .tickers-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
 }

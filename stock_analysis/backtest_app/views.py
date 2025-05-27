@@ -157,6 +157,7 @@ def index(request):
                             strategy_name=strategy_name,
                             best_params=best_params_serializable,  # シリアライズ可能な形式に変換
                             final_result=final_result_dict,  # 修正後の辞書を保存
+                            interval=interval,  # 日足または5分足を保存
                         )
 
                         # フラグが出た場合、データベースに保存（上書き）
@@ -336,6 +337,26 @@ def data_log(request):
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
+    # 各結果の final_result を展開してリストに追加
+    expanded_results = []
+    for result in page_obj:
+        expanded_result = {
+            "id": result.id,
+            "ticker": result.ticker,
+            "strategy_name": result.strategy_name,
+            "created_at": result.created_at,
+            "interval": result.interval,  # 日足または5分足
+            "start": result.final_result.get("Start") if result.final_result else None,
+            "end": result.final_result.get("End") if result.final_result else None,
+            "return_percentage": result.final_result.get("Return [%]") if result.final_result else None,
+            "buy_and_hold_return": result.final_result.get("Buy & Hold Return [%]") if result.final_result else None,
+            "best_params": result.best_params,  # 最適値
+            "trades": result.final_result.get("# Trades") if result.final_result else None,
+            "sharpe_ratio": result.final_result.get("Sharpe Ratio") if result.final_result else None,
+        }
+        expanded_results.append(expanded_result)
+
     return render(request, "backtest_app/data_log.html", {
         "page_obj": page_obj,
+        "expanded_results": expanded_results,
     })
