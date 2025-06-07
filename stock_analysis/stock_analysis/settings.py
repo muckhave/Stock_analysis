@@ -26,7 +26,7 @@ SECRET_KEY = 'django-insecure-!9-9_s*sr#vn@=_rfp^i4baf=*4uplm@zr0yl5dgnhqg*mi00$
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
+ALLOWED_HOSTS = ['younoba.com', 'www.younoba.com', 'localhost', '127.0.0.1']
 
 # Application definition
 
@@ -117,9 +117,7 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
 
 STATIC_URL = '/static/'
-STATICFILES_DIRS = [
-    BASE_DIR / "static",  # このディレクトリが存在することを確認
-]
+STATIC_ROOT = BASE_DIR / 'staticfiles'  # collectstaticで集約される場所
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
